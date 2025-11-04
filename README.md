@@ -6,9 +6,7 @@
 
 ## 目录结构
 
-```
 ├── .gitignore               # Git忽略文件配置
-├── analyze_results.py       # 仿真结果分析脚本
 ├── bus.py                   # 公交车优先控制主程序
 ├── create_intersection.py   # 交叉路口创建工具
 ├── crossroad_simulation.sumocfg  # SUMO仿真配置文件
@@ -33,7 +31,6 @@
     ├── nodes.nod.xml        # 道路节点配置
     ├── traffic.rou.xml      # 交通流配置
     └── traffic_light.add.xml  # 交通灯配置
-```
 
 ## 核心功能模块
 
@@ -80,7 +77,6 @@
 
 1. 准备仿真配置文件（位于test/目录下）
 2. 运行主仿真程序：
-   ```bash
    python bus.py
    ```
 
