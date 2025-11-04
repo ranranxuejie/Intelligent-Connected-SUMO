@@ -1,14 +1,15 @@
 import traci
 import traceback
-
+import time
 # ===== 全局状态 =====
 _bus_tsp_state = {}         # (tls_id, bus_id) -> {total_extended: float}
 # 历史记录
 _bus_tsp_history = {}       # (tls_id, bus_id) -> [ {time: float, total_extended: float} ]
 
-MAX_EXTENSION = 30          # 最大延长秒数
+MAX_EXTENSION = 15          # 最大延长秒数
 EXTEND_THRESHOLD = 5        # 延长触发阈值（剩余绿灯 < X 秒）
 EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
+QUEUE_THRESHOLD = 1
 
 def is_bus_lane(lane_id):
     # 方法2（更安全）：再检查是否允许 bus
@@ -16,6 +17,41 @@ def is_bus_lane(lane_id):
         return True
     else:
         return False
+def is_current_green_lane_empty(green_lanes):
+    """
+    检查所有绿灯车道是否无车排队
+    green_lanes: 绿灯车道ID列表
+    返回：True（无排队）/ False（有排队）
+    """
+    for lane_id in green_lanes:
+        # 获取车道的排队长度（sumo内置：静止或低速行驶的车辆总长度，单位米）
+        queue_length = (traci.lane.getLastStepHaltingNumber(lane_id))
+        # 也可以用车辆数判断：traci.lane.getLastStepVehicleNumber(lane_id) > 0
+        if queue_length > QUEUE_THRESHOLD:
+            print(f"[TSP] 当前绿灯车道 {lane_id} 有排队（长度：{queue_length:.1f}m），不执行红灯早断")
+            return False
+    return True
+
+
+def get_current_green_lanes(tls_id, current_phase):
+    """
+    获取当前相位的所有绿灯车道（state为'G'或'g'）
+    返回：绿灯车道ID列表
+    """
+    controlled_links = traci.trafficlight.getControlledLinks(tls_id)
+    green_lanes = []
+    state_str = current_phase.state
+
+    for idx, link in enumerate(controlled_links):
+        # 确保索引不越界，且当前位置是绿灯
+        if idx < len(state_str) and state_str[idx] in ('G'):
+            # controlled_links中每个link是[(lane_id, edge_id, direction)]的列表
+            if len(link) > 0:
+                green_lane_id = link[0][0]  # 获取该link的车道ID
+                green_lanes.append(green_lane_id)
+    return green_lanes
+
+
 def handle_bus_priority(tls_id, bus_id):
     global  _bus_tsp_state
     key = (tls_id, bus_id)
@@ -69,9 +105,7 @@ def handle_bus_priority(tls_id, bus_id):
         print(f"[TSP] 清除无有效距离状态: {key}")
         return
     # print(f"[TSP] 距离 {dist_to_stop:.1f}m")
-    # ==============================
-    # ✅ 情况1：当前是绿灯 → 延长
-    # ==============================
+
     is_current_green = False
     target_link_indices = None
     for i, link in enumerate(controlled_links):
@@ -80,7 +114,9 @@ def handle_bus_priority(tls_id, bus_id):
             if i < len(state_str) and state_str[i] in ('G', 'g'):
                 is_current_green = True
             break
-
+    # ==============================
+    # ✅ 情况1：当前是绿灯 → 延长
+    # ==============================
     if is_current_green and dist_to_stop > 0:
         total_extended = _bus_tsp_state.get(key, {}).get('total_extended', 0.0)
         if total_extended < MAX_EXTENSION:
@@ -100,6 +136,11 @@ def handle_bus_priority(tls_id, bus_id):
     # ✅ 情况2：当前是红灯，满足早断条件
     # ==============================
     if dist_to_stop < EARLY_GREEN_DIST:
+        # 1. 先获取当前相位的所有绿灯车道
+        current_green_lanes = get_current_green_lanes(tls_id, current_phase)
+        # 2. 检查当前绿灯车道是否无车排队（核心新增逻辑）
+        if not is_current_green_lane_empty(current_green_lanes):
+            return  # 有排队，放弃红灯早断
         for need_phase_idx, phase in enumerate(all_logics[1].phases):
             # 检查该相位中，目标车道的状态是否为绿灯（'G'）
             if phase.state[target_link_indices] == 'G' or phase.state[target_link_indices] == 'g':
@@ -110,8 +151,13 @@ def handle_bus_priority(tls_id, bus_id):
             print(f"{current_time:.1f}s [TSP] 🚦 红灯早断！跳到相位 {need_phase_idx} 供 {bus_id} (距路口 {dist_to_stop:.1f}m)")
             _bus_tsp_history[bus_id] = {'time': remaining}
 
-traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg", "--start"])
-step = 0
+traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg", "--start","--fcd-output","./output/fcd.xml"])
+simu_speed = 20
+
+# step = 0
+time_per_step = 0.1/simu_speed
+t0 = time.time()
+# time.sleep(10) # 准备录屏
 while traci.simulation.getMinExpectedNumber() > 0:
     traci.simulationStep()
     # 处理每辆公交车
@@ -121,11 +167,14 @@ while traci.simulation.getMinExpectedNumber() > 0:
             if next_tls_list:
                 tls_id = next_tls_list[0][0]
                 handle_bus_priority(tls_id, veh_id)
-    step += 1
+    # step += 1
     # if step>6250:
     #     break
+    # 控制仿真速度
+    time.sleep(max(0, time_per_step - (time.time() - t0)))
+    t0 = time.time()
 
 traci.close()
 
-for i in range(100):
-    traci.simulationStep()
+# for i in range(100):
+#     traci.simulationStep()

@@ -303,8 +303,4 @@
     <stop busStop="bus_line2_stop_0" duration="30"/>
     <stop busStop="bus_line2_stop_1" duration="30"/>
   </vehicle>
-  <vehicle id="bus_line1_19" type="bus" route="bus_line1_route" depart="3480" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
 </routes>

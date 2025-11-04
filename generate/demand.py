@@ -40,7 +40,7 @@ bus_lines = [
         ],
         "depart_interval": 180,
         "start_time": 60,
-        "end_time": 3540
+        "end_time": 3420
     },
     {
         "id": "bus_line2",  # 北向南直行
@@ -51,7 +51,7 @@ bus_lines = [
         ],
         "depart_interval": 240,
         "start_time": 60,
-        "end_time": 3540
+        "end_time": 3420
     }
 ]
 
