@@ -1,0 +1,66 @@
+{
+    "bus_line2_0": {
+        "type": "Green Light Early Activation",
+        "time": 7.700000000000003
+    },
+    "bus_line2_1": {
+        "type": "Red Light Early Termination",
+        "time": 4.899999999999977
+    },
+    "bus_line2_2": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    },
+    "bus_line2_4": {
+        "type": "Green Light Early Activation",
+        "time": 6.599999999999909
+    },
+    "bus_line2_5": {
+        "type": "Red Light Early Termination",
+        "time": 1.3999999999998636
+    },
+    "bus_line1_7": {
+        "type": "Green Light Early Activation",
+        "time": 2.2000000000000455
+    },
+    "bus_line2_6": {
+        "type": "Red Light Early Termination",
+        "time": 2.599999999999909
+    },
+    "bus_line2_7": {
+        "type": "Green Light Early Activation",
+        "time": 4.400000000000091
+    },
+    "bus_line2_8": {
+        "type": "Green Light Early Activation",
+        "time": 15.0
+    },
+    "bus_line1_11": {
+        "type": "Green Light Early Activation",
+        "time": 14.0
+    },
+    "bus_line1_12": {
+        "type": "Green Light Early Activation",
+        "time": 5.5
+    },
+    "bus_line2_9": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    },
+    "bus_line2_10": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    },
+    "bus_line2_11": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    },
+    "bus_line2_12": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    },
+    "bus_line2_13": {
+        "type": "Red Light Early Termination",
+        "time": 4.900000000000091
+    }
+}

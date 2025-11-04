@@ -1,15 +1,36 @@
+
+MAX_EXTENSION = 15          # 最大延长秒数
+EXTEND_THRESHOLD = 3        # 延长触发阈值（剩余绿灯 < X 秒）
+EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
+QUEUE_THRESHOLD = 1         # 禁止红灯早断的队列长度阈值（超过X辆车排队时不执行早断）
+
 import traci
 import traceback
 import time
+import json
+from analyze_results import analyze_tripinfo, analyze_queue
 # ===== 全局状态 =====
 _bus_tsp_state = {}         # (tls_id, bus_id) -> {total_extended: float}
 # 历史记录
 _bus_tsp_history = {}       # (tls_id, bus_id) -> [ {time: float, total_extended: float} ]
-
-MAX_EXTENSION = 15          # 最大延长秒数
-EXTEND_THRESHOLD = 5        # 延长触发阈值（剩余绿灯 < X 秒）
-EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
-QUEUE_THRESHOLD = 1
+OUTPUT_FOLDER = f"output/{time.strftime('%Y%m%d_%H%M%S')}/"
+import os
+import shutil
+os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+# 保存当前参数
+def save_current_params():
+    with open(OUTPUT_FOLDER + "params.txt", "w") as f:
+        f.write(f"MAX_EXTENSION={MAX_EXTENSION}\n")
+        f.write(f"EXTEND_THRESHOLD={EXTEND_THRESHOLD}\n")
+        f.write(f"EARLY_GREEN_DIST={EARLY_GREEN_DIST}\n")
+        f.write(f"QUEUE_THRESHOLD={QUEUE_THRESHOLD}\n")
+        f.write(f"BUS_FIRST={BUS_FIRST}\n")
+    # copy一份当前的xml和sumocfg配置文件
+    shutil.copy("test/crossroad.net.xml", OUTPUT_FOLDER + "crossroad.net.xml")
+    shutil.copy("test/traffic.rou.xml", OUTPUT_FOLDER + "traffic.rou.xml")
+    shutil.copy("test/traffic_light.add.xml", OUTPUT_FOLDER + "traffic_light.add.xml")
+    shutil.copy("test/bus_stops.add.xml", OUTPUT_FOLDER + "bus_stops.add.xml")
+    shutil.copy("crossroad_simulation.sumocfg", OUTPUT_FOLDER + "crossroad_simulation.sumocfg")
 
 def is_bus_lane(lane_id):
     # 方法2（更安全）：再检查是否允许 bus
@@ -32,6 +53,25 @@ def is_current_green_lane_empty(green_lanes):
             return False
     return True
 
+
+def analyze_result():
+    print("正在分析tripinfo.xml...")
+    trip_stats = analyze_tripinfo(f"{OUTPUT_FOLDER}tripinfo.xml")
+
+    # 分析queue.xml
+    print("\n正在分析queue.xml...")
+    queue_stats = analyze_queue(f"{OUTPUT_FOLDER}queue.xml")
+
+    # 保存分析结果到JSON文件
+
+    with open(f"{OUTPUT_FOLDER}queue_stats.json", "w", encoding="utf-8") as f:
+        json.dump(queue_stats, f, ensure_ascii=False, indent=4)
+
+    with open(f"{OUTPUT_FOLDER}trip_stats.json", "w", encoding="utf-8") as f:
+        json.dump(trip_stats, f, ensure_ascii=False, indent=4)
+
+    with open(f"{OUTPUT_FOLDER}bus_tsp_history.json", "w") as f:
+        json.dump(_bus_tsp_history, f, indent=4)
 
 def get_current_green_lanes(tls_id, current_phase):
     """
@@ -129,7 +169,7 @@ def handle_bus_priority(tls_id, bus_id):
                     traci.trafficlight.setPhaseDuration(tls_id, new_remaining)
                     _bus_tsp_state[key] = {'total_extended': total_extended + extra}
                     print(f"{current_time:.1f}s [TSP] 🚦 绿灯延长！ {extra:.1f}s ({total_extended + extra:.1f}/{MAX_EXTENSION}) for {bus_id}")
-                    _bus_tsp_history[bus_id] = {'time': total_extended + extra}
+                    _bus_tsp_history[bus_id] = {'type':'Green Light Early Activation','time': total_extended + extra}
         return
 
     # ==============================
@@ -149,32 +189,30 @@ def handle_bus_priority(tls_id, bus_id):
         if next_phase_idx == need_phase_idx:
             traci.trafficlight.setPhase(tls_id, traci.trafficlight.getPhase(tls_id)+1)
             print(f"{current_time:.1f}s [TSP] 🚦 红灯早断！跳到相位 {need_phase_idx} 供 {bus_id} (距路口 {dist_to_stop:.1f}m)")
-            _bus_tsp_history[bus_id] = {'time': remaining}
+            _bus_tsp_history[bus_id] = {'type':'Red Light Early Termination','time': remaining}
 
-traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg", "--start","--fcd-output","./output/fcd.xml"])
-simu_speed = 20
+traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg","--tripinfo-output",
+             f"{OUTPUT_FOLDER}tripinfo.xml","--queue-output",f"{OUTPUT_FOLDER}queue.xml","--start"])
+simu_speed = 0 # 最大仿真倍速
+BUS_FIRST = False
+save_current_params()   # 仿真前备份可复现的全部支持文件
 
-# step = 0
-time_per_step = 0.1/simu_speed
+time_per_step = 0.1/simu_speed if simu_speed>0 else 0.1
 t0 = time.time()
 # time.sleep(10) # 准备录屏
 while traci.simulation.getMinExpectedNumber() > 0:
     traci.simulationStep()
-    # 处理每辆公交车
-    for veh_id in traci.vehicle.getIDList():
-        if veh_id.startswith("bus_"):
-            next_tls_list = traci.vehicle.getNextTLS(veh_id)
-            if next_tls_list:
-                tls_id = next_tls_list[0][0]
-                handle_bus_priority(tls_id, veh_id)
-    # step += 1
-    # if step>6250:
-    #     break
+    if BUS_FIRST:
+        # 处理每辆公交车
+        for veh_id in traci.vehicle.getIDList():
+            if veh_id.startswith("bus_"):
+                next_tls_list = traci.vehicle.getNextTLS(veh_id)
+                if next_tls_list:
+                    tls_id = next_tls_list[0][0]
+                    handle_bus_priority(tls_id, veh_id)
     # 控制仿真速度
-    time.sleep(max(0, time_per_step - (time.time() - t0)))
-    t0 = time.time()
-
-traci.close()
-
-# for i in range(100):
-#     traci.simulationStep()
+    if simu_speed>0:
+        time.sleep(max(0, time_per_step - (time.time() - t0)))
+        t0 = time.time()
+traci.close(wait=False)
+analyze_result()

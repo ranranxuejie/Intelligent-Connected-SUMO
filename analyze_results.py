@@ -2,6 +2,7 @@
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 import os
+import json
 
 def fix_tripinfo_xml(tripinfo_file):
     if not os.path.exists(tripinfo_file):
@@ -93,6 +94,7 @@ def analyze_tripinfo(tripinfo_file):
     print(f"{'='*60}")
     print(f"{'Vehicle Type':<12} | {'Count':<6} | {'Avg Delay(s)':<12} | {'Avg Wait(s)':<12} | {'Total CO2(g)':<12} | {'Total Fuel(g)':<12}")
     print(f"{'-'*60}")
+    result = {}
     for cat in ["private", "bus"]:
         data = stats[cat]
         n = len(data["duration"])
@@ -103,8 +105,14 @@ def analyze_tripinfo(tripinfo_file):
         total_co2 = sum(data["co2"])
         total_fuel = sum(data["fuel"])
         print(f"{cat:<12} | {n:<6} | {avg_delay:<12.2f} | {avg_wait:<12.2f} | {total_co2:<12.1f} | {total_fuel:<12.1f}")
-
-    return stats
+        result[cat] = {
+            "count": n,
+            "avg_delay": avg_delay,
+            "avg_wait": avg_wait,
+            "total_co2": total_co2,
+            "total_fuel": total_fuel
+        }
+    return result
 
 # 新增函数：修复queue.xml文件，处理可能不完整的XML格式
 def fix_queue_xml(queue_file):
@@ -380,11 +388,22 @@ def analyze_queue_manually(queue_file):
     print("[INFO] 已使用手动解析方法完成数据提取。")
     return queue_stats
 
+
 if __name__ == "__main__":
     # 分析tripinfo.xml
+    OUTPUT_FOLDER = "./output/20251104_172712/"
+
     print("正在分析tripinfo.xml...")
-    trip_stats = analyze_tripinfo("./output/tripinfo.xml")
+    trip_stats = analyze_tripinfo(f"{OUTPUT_FOLDER}tripinfo.xml")
     
     # 分析queue.xml
     print("\n正在分析queue.xml...")
-    queue_stats = analyze_queue("./output/queue.xml")
+    queue_stats = analyze_queue(f"{OUTPUT_FOLDER}queue.xml")
+
+    # 保存分析结果到JSON文件
+
+    with open(f"{OUTPUT_FOLDER}queue_stats.json", "w", encoding="utf-8") as f:
+        json.dump(queue_stats, f, ensure_ascii=False, indent=4)
+
+    with open(f"{OUTPUT_FOLDER}trip_stats.json", "w", encoding="utf-8") as f:
+        json.dump(trip_stats, f, ensure_ascii=False, indent=4)

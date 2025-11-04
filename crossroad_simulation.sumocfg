@@ -5,10 +5,7 @@
     <route-files value="test/traffic.rou.xml"/>
     <additional-files value="test/traffic_light.add.xml, test/bus_stops.add.xml"/>
   </input>
-  <output>
-      <tripinfo-output value="output/tripinfo.xml"/>
-      <queue-output value="output/queue.xml"/>
-  </output>
+
   <time>
     <begin value="0"/>
     <end value="3600"/>
