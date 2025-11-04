@@ -6,6 +6,7 @@
 
 ## 目录结构
 
+```
 ├── .gitignore               # Git忽略文件配置
 ├── bus.py                   # 公交车优先控制主程序
 ├── create_intersection.py   # 交叉路口创建工具
@@ -31,7 +32,7 @@
     ├── nodes.nod.xml        # 道路节点配置
     ├── traffic.rou.xml      # 交通流配置
     └── traffic_light.add.xml  # 交通灯配置
-
+```
 ## 核心功能模块
 
 ### 1. 公交车优先控制系统（bus.py）
@@ -70,6 +71,10 @@
 1. 安装Python环境
 2. 安装SUMO并配置环境变量
 3. 克隆本项目代码
+4. 安装项目依赖：
+   ```bash
+   pip install traci, sumolib
+   ```
 
 ### 使用流程
 
@@ -77,6 +82,7 @@
 
 1. 准备仿真配置文件（位于test/目录下）
 2. 运行主仿真程序：
+   ```bash
    python bus.py
    ```
 
@@ -86,7 +92,7 @@
 
 仿真完成后，系统会自动调用分析模块处理结果。也可以单独运行分析脚本：
 
-```
+```bash
 python analyze_results.py
 ```
 

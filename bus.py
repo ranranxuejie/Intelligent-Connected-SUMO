@@ -5,7 +5,6 @@ EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
 QUEUE_THRESHOLD = 1         # 禁止红灯早断的队列长度阈值（超过X辆车排队时不执行早断）
 
 import traci
-import traceback
 import time
 import json
 from analyze_results import analyze_tripinfo, analyze_queue
