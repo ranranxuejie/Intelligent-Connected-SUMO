@@ -4,61 +4,13 @@ from collections import defaultdict
 import os
 import json
 
-def fix_tripinfo_xml(tripinfo_file):
-    if not os.path.exists(tripinfo_file):
-        raise FileNotFoundError(f"文件不存在: {tripinfo_file}")
-
-    with open(tripinfo_file, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    content = content.strip()
-    if not content:
-        raise ValueError("tripinfo.xml 为空！")
-
-    # 快速检查是否已完整
-    if content.endswith("</tripinfos>"):
-        print("[INFO] tripinfo.xml 已完整，跳过修复。")
-        return
-
-    # 找 <tripinfos> 起始位置
-    start_idx = content.find("<tripinfos")
-    if start_idx == -1:
-        raise ValueError("错误：未找到 <tripinfos> 根标签！")
-
-    header = content[:start_idx]
-    body = content[start_idx:]
-
-    # 提取 <tripinfos ...> 开始标签（直到第一个 >）
-    gt_pos = body.find(">")
-    if gt_pos == -1:
-        raise ValueError("无法解析 <tripinfos> 开始标签！")
-
-    open_tag = body[:gt_pos+1]
-    rest = body[gt_pos+1:]
-
-    # 分割 tripinfo 块
-    parts = rest.split("</tripinfo>")
-    valid_blocks = []
-    for part in parts[:-1]:
-        if "<tripinfo" in part:
-            candidate = part + "</tripinfo>"
-            if "<emissions " in candidate:
-                valid_blocks.append(candidate)
-
-    print(f"[INFO] 修复：共保留 {len(valid_blocks)} 个完整 tripinfo 记录")
-
-    # 重写
-    with open(tripinfo_file, "w", encoding="utf-8") as f:
-        f.write(header)
-        f.write(open_tag + "\n")
-        for block in valid_blocks:
-            f.write(block + "\n")
-        f.write("</tripinfos>\n")
-
-    print("[INFO] 修复完成。")
+# 读取配置文件
+with open("./generate/config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+LANE_FUNCTIONS = config["LANE_FUNCTIONS"]
 
 def analyze_tripinfo(tripinfo_file):
-    fix_tripinfo_xml(tripinfo_file)
+    # fix_tripinfo_xml(tripinfo_file)
 
     tree = ET.parse(tripinfo_file)
     root = tree.getroot()
@@ -91,9 +43,9 @@ def analyze_tripinfo(tripinfo_file):
         stats[category]["fuel"].append(fuel)
 
     # 输出汇总
-    print(f"{'='*60}")
-    print(f"{'Vehicle Type':<12} | {'Count':<6} | {'Avg Delay(s)':<12} | {'Avg Wait(s)':<12} | {'Total CO2(g)':<12} | {'Total Fuel(g)':<12}")
-    print(f"{'-'*60}")
+    # print(f"{'='*60}")
+    print(f"| {'Vehicle Type':<12} | {'Count':<6} | {'Avg Delay(s)':<12} | {'Avg Wait(s)':<12} | {'Total CO2(g)':<12} | {'Total Fuel(g)':<12} |")
+    print(f"| {'-'*5} | {'-'*5} | {'-'*5} | {'-'*5} | {'-'*5} | {'-'*5} |")
     result = {}
     for cat in ["private", "bus"]:
         data = stats[cat]
@@ -104,7 +56,7 @@ def analyze_tripinfo(tripinfo_file):
         avg_wait = sum(data["waiting_time"]) / n
         total_co2 = sum(data["co2"])
         total_fuel = sum(data["fuel"])
-        print(f"{cat:<12} | {n:<6} | {avg_delay:<12.2f} | {avg_wait:<12.2f} | {total_co2:<12.1f} | {total_fuel:<12.1f}")
+        print(f"| {cat:<12} | {n:<6} | {avg_delay:<12.2f} | {avg_wait:<12.2f} | {total_co2:<12.1f} | {total_fuel:<12.1f} |")
         result[cat] = {
             "count": n,
             "avg_delay": avg_delay,
@@ -114,77 +66,33 @@ def analyze_tripinfo(tripinfo_file):
         }
     return result
 
-# 新增函数：修复queue.xml文件，处理可能不完整的XML格式
-def fix_queue_xml(queue_file):
+# 在 analyze_queue 函数中，替换车道类型判断部分
+
+# 定义车道功能映射
+def get_lane_type(direction, lane_index):
     """
-    修复queue.xml文件，确保它是一个完整的XML文档
-    如果文件不完整，会尝试保留有效的数据部分并添加正确的结束标签
-    
-    Args:
-        queue_file: queue.xml文件路径
+    根据方向和车道索引，返回车道类型（bus / straight / left）
+    lane_index: int, 从 0 开始
     """
-    if not os.path.exists(queue_file):
-        raise FileNotFoundError(f"文件不存在: {queue_file}")
+    func_str = LANE_FUNCTIONS.get(f"{direction}_in")
+    if not func_str:
+        return None  # 未知方向
 
-    with open(queue_file, "r", encoding="utf-8") as f:
-        content = f.read()
+    if lane_index >= len(func_str):
+        return None  # 车道索引越界
 
-    content = content.strip()
-    if not content:
-        raise ValueError("queue.xml 为空！")
+    char = func_str[lane_index]
 
-    # 快速检查是否已完整
-    if content.endswith("</queue-export>"):
-        print("[INFO] queue.xml 已完整，跳过修复。")
-        return
-
-    # 找 <queue-export> 起始位置
-    start_idx = content.find("<queue-export")
-    if start_idx == -1:
-        raise ValueError("错误：未找到 <queue-export> 根标签！")
-
-    header = content[:start_idx]
-    body = content[start_idx:]
-
-    # 提取 <queue-export ...> 开始标签（直到第一个 >）
-    gt_pos = body.find(">")
-    if gt_pos == -1:
-        raise ValueError("无法解析 <queue-export> 开始标签！")
-
-    open_tag = body[:gt_pos+1]
-    rest = body[gt_pos+1:]
-
-    # 检查是否有有效的数据部分
-    # 我们保留所有直到最后一个有效的data标签
-    data_parts = []
-    current_data = ""
-    in_data = False
-    
-    for line in rest.splitlines():
-        stripped_line = line.strip()
-        if stripped_line.startswith("<data"):
-            in_data = True
-            current_data = line
-        elif stripped_line.startswith("</data>") and in_data:
-            current_data += "\n" + line
-            data_parts.append(current_data)
-            current_data = ""
-            in_data = False
-        elif in_data:
-            current_data += "\n" + line
-    
-    print(f"[INFO] 修复queue.xml：共保留 {len(data_parts)} 个完整 data 记录")
-
-    # 重写修复后的文件
-    with open(queue_file, "w", encoding="utf-8") as f:
-        f.write(header)
-        f.write(open_tag + "\n")
-        for data in data_parts:
-            f.write(data + "\n")
-        f.write("</queue-export>\n")
-
-    print("[INFO] queue.xml 修复完成。")
-
+    if char == 'b':
+        return 'bus'
+    elif char in ['s', 't', 'u']:  # 直行、直右、直左均视为“直行”类排队
+        return 'straight'
+    elif char == 'l':
+        return 'left'
+    elif char == 'r':
+        return None  # 右转车道不统计排队
+    else:
+        return None
 # 修改后的队列分析函数，添加文件修复步骤
 def analyze_queue(queue_file):
     """
@@ -197,17 +105,10 @@ def analyze_queue(queue_file):
     Returns:
         dict: 包含每个进口道的排队统计数据
     """
-    # 首先修复queue.xml文件
-    fix_queue_xml(queue_file)
 
-    try:
-        tree = ET.parse(queue_file)
-        root = tree.getroot()
-    except ET.ParseError as e:
-        print(f"[ERROR] XML解析错误: {e}")
-        print("[INFO] 尝试使用备用解析方法...")
-        # 备用方法：手动解析文件，提取有用数据
-        return analyze_queue_manually(queue_file)
+    tree = ET.parse(queue_file)
+    root = tree.getroot()
+
 
     # 用于存储每个进口道的排队数据
     # 格式: {进口道类型: {'max_length': 最大排队长度, 'total_length': 总排队长度, 'count': 记录数}}
@@ -235,31 +136,21 @@ def analyze_queue(queue_file):
                 # 车道ID格式通常为：方向_in_车道号，如west_in_2, south_in_4等
                 parts = lane_id.split('_')
                 if len(parts) >= 3 and parts[1] == 'in':
-                    direction = parts[0]  # 获取方向部分（west, south等）
+                    direction = parts[0]
                     try:
-                        lane_num = int(parts[2])  # 获取车道号
-                        
-                        # 根据车道号确定车道类型
-                        lane_type = None
-                        if lane_num == 1:
-                            lane_type = 'bus'  # 1号车道为公交专用进口道
-                        elif lane_num in [2, 3]:
-                            lane_type = 'straight'  # 2,3为直行车道
-                        elif lane_num == 4:
-                            lane_type = 'left'  # 4为左转车道
-                        # 0号车道（右转）忽略不计
-                        
-                        # 如果是有效车道类型，则统计数据
-                        if lane_type:
-                            approach_key = f"{direction}_{lane_type}"
-                            
-                            # 更新该进口道的排队数据
-                            if queue_length > approach_data[approach_key]['max_length']:
-                                approach_data[approach_key]['max_length'] = queue_length
-                            approach_data[approach_key]['total_length'] += queue_length
-                            approach_data[approach_key]['count'] += 1
+                        lane_num = int(parts[2])  # SUMO 车道编号从 0 开始！
+                        lane_type = get_lane_type(direction, lane_num)
+                        if lane_type is None:
+                            continue  # 跳过右转或无效车道
+
+                        approach_key = f"{direction}_{lane_type}"
+                        # 更新统计数据...
+                        if queue_length > approach_data[approach_key]['max_length']:
+                            approach_data[approach_key]['max_length'] = queue_length
+                        approach_data[approach_key]['total_length'] += queue_length
+                        approach_data[approach_key]['count'] += 1
+
                     except (ValueError, IndexError):
-                        # 如果车道号无法解析，跳过该车道
                         continue
     
     # 计算每个进口道的平均排队长度
@@ -274,9 +165,9 @@ def analyze_queue(queue_file):
             }
     
     # 输出统计结果，按方向和车道类型分类
-    print(f"\n{'='*80}")
-    print(f"{'进口道类型':<20} | {'最大排队长度(m)':<18} | {'平均排队长度(m)':<18} | {'记录数':<8}")
-    print(f"{'-'*80}")
+    # print(f"\n{'='*80}")
+    print(f"| {'进口道类型'} | {'最大排队长度(m)'} | {'平均排队长度(m)'} | {'记录数'}|")
+    print(f"| {'-'*5}  |{'-'*5} | {'-'*5} | {'-'*5} |")
     
     # 按方向（东南西北）和车道类型（公交、直行、左转）顺序输出
     directions = ['east', 'south', 'west', 'north']
@@ -291,119 +182,28 @@ def analyze_queue(queue_file):
                 stats = queue_stats[key]
                 # 输出中文方向和车道类型名称，便于阅读
                 display_name = f"{direction_names[direction]}{lane_type_names[lane_type]}"
-                print(f"{display_name:<20} | {stats['max_queue_length']:<18} | {stats['avg_queue_length']:<18} | {stats['record_count']:<8}")
+                print(f"| {display_name} | {stats['max_queue_length']} | {stats['avg_queue_length']} | {stats['record_count']} |")
     
     return queue_stats
 
-# 新增备用解析方法：当XML解析失败时手动解析文件
-def analyze_queue_manually(queue_file):
-    """
-    当XML解析器失败时，手动解析queue.xml文件的备用方法
-    按照4个方向（东南西北）× 3种车道类型（公交专用道、直行车道、左转车道）分类统计
-    
-    Args:
-        queue_file: queue.xml文件路径
-        
-    Returns:
-        dict: 包含每个进口道的排队统计数据
-    """
-    # 用于存储每个进口道的排队数据
-    approach_data = defaultdict(lambda: {'max_length': 0, 'total_length': 0, 'count': 0})
-    
-    with open(queue_file, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-    
-    for line in lines:
-        line = line.strip()
-        # 查找lane标签
-        if '<lane ' in line and '/>' in line or '</lane>' in line:
-            try:
-                # 提取lane_id
-                id_start = line.find('id="') + 4
-                id_end = line.find('"', id_start)
-                lane_id = line[id_start:id_end] if id_start < id_end else ''
-                
-                # 提取queueing_length
-                length = 0
-                if 'queueing_length="' in line:
-                    len_start = line.find('queueing_length="') + 17
-                    len_end = line.find('"', len_start)
-                    if len_start < len_end:
-                        length = float(line[len_start:len_end])
-                
-                # 如果queueing_length为0，尝试使用实验性值
-                if length == 0 and 'queueing_length_experimental="' in line:
-                    exp_len_start = line.find('queueing_length_experimental="') + 28
-                    exp_len_end = line.find('"', exp_len_start)
-                    if exp_len_start < exp_len_end:
-                        length = float(line[exp_len_start:exp_len_end])
-                
-                # 识别进口道并更新数据
-                # 只处理进口道（以_in结尾的车道）
-                if lane_id.endswith('_in') or '_in_' in lane_id:
-                    # 提取车道方向和车道号
-                    parts = lane_id.split('_')
-                    if len(parts) >= 3 and parts[1] == 'in':
-                        direction = parts[0]  # 获取方向部分（west, south等）
-                        try:
-                            lane_num = int(parts[2])  # 获取车道号
-                            
-                            # 根据车道号确定车道类型
-                            lane_type = None
-                            if lane_num == 1:
-                                lane_type = 'bus'  # 1号车道为公交专用进口道
-                            elif lane_num in [2, 3]:
-                                lane_type = 'straight'  # 2,3为直行车道
-                            elif lane_num == 4:
-                                lane_type = 'left'  # 4为左转车道
-                            # 0号车道（右转）忽略不计
-                            
-                            # 如果是有效车道类型，则统计数据
-                            if lane_type:
-                                approach_key = f"{direction}_{lane_type}"
-                                
-                                # 更新该进口道的排队数据
-                                if length > approach_data[approach_key]['max_length']:
-                                    approach_data[approach_key]['max_length'] = length
-                                approach_data[approach_key]['total_length'] += length
-                                approach_data[approach_key]['count'] += 1
-                        except (ValueError, IndexError):
-                            # 如果车道号无法解析，跳过该车道
-                            continue
-            except Exception as e:
-                # 忽略解析错误的行，继续处理
-                continue
-    
-    # 计算统计数据
-    queue_stats = {}
-    for approach, data in approach_data.items():
-        count = data['count']
-        if count > 0:
-            queue_stats[approach] = {
-                'max_queue_length': round(data['max_length'], 2),
-                'avg_queue_length': round(data['total_length'] / count, 2),
-                'record_count': count
-            }
-    
-    print("[INFO] 已使用手动解析方法完成数据提取。")
-    return queue_stats
+def analyze_all(outfolder):
+    print("正在分析tripinfo.xml...")
+    trip_stats = analyze_tripinfo(f"{outfolder}tripinfo.xml")
+
+    # 分析queue.xml
+    print("\n正在分析queue.xml...")
+    queue_stats = analyze_queue(f"{outfolder}queue.xml")
+
+    # 保存分析结果到JSON文件
+
+    with open(f"{outfolder}queue_stats.json", "w", encoding="utf-8") as f:
+        json.dump(queue_stats, f, ensure_ascii=False, indent=4)
+
+    with open(f"{outfolder}trip_stats.json", "w", encoding="utf-8") as f:
+        json.dump(trip_stats, f, ensure_ascii=False, indent=4)
 
 
 if __name__ == "__main__":
     # 分析tripinfo.xml
-    OUTPUT_FOLDER = "./output/20251104_172712/"
-
-    print("正在分析tripinfo.xml...")
-    trip_stats = analyze_tripinfo(f"{OUTPUT_FOLDER}tripinfo.xml")
-    
-    # 分析queue.xml
-    print("\n正在分析queue.xml...")
-    queue_stats = analyze_queue(f"{OUTPUT_FOLDER}queue.xml")
-
-    # 保存分析结果到JSON文件
-
-    with open(f"{OUTPUT_FOLDER}queue_stats.json", "w", encoding="utf-8") as f:
-        json.dump(queue_stats, f, ensure_ascii=False, indent=4)
-
-    with open(f"{OUTPUT_FOLDER}trip_stats.json", "w", encoding="utf-8") as f:
-        json.dump(trip_stats, f, ensure_ascii=False, indent=4)
+    OUTPUT_FOLDER = "./output//"+ '20251105_165245'+'/'
+    analyze_all(OUTPUT_FOLDER)

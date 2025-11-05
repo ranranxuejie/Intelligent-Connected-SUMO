@@ -1,20 +1,31 @@
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
+import json
+
+# 读取配置文件
+with open("./generate/config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+
 def inject_tl_into_net():
     net_file = "./test/crossroad.net.xml"
     tl_id = "center"
-    output_tll_file = "./test/traffic_light.add.xml"  # ✅ 指定新文件名
+    output_tll_file = "./test/traffic_light.add.xml"
 
-    # === 信号配时参数 ===
-    green_straight = 45
-    green_left = 15
-    yellow_time = 3
+    # 信号配时参数
+    signal = config["signal_timing"]
+    green_ew_straight = signal["green_ew_straight"]
+    green_ns_straight = signal["green_ns_straight"]
+    green_ew_left = signal["green_ew_left"]
+    green_ns_left = signal["green_ns_left"]
+    yellow_time = signal["yellow_time"]
+    all_red_time = signal["all_red_time"]
 
     # === 最小/最大绿灯时间（秒）===
     min_green_straight = 20
     max_green_straight = 60
-    min_green_left = 10
-    max_green_left = 30
+    min_green_left = 20
+    max_green_left = 60
 
     tree = ET.parse(net_file)
     root = tree.getroot()
@@ -91,7 +102,11 @@ def inject_tl_into_net():
                 s.append('r')
         return "".join(s)
 
-    # === 构建 tlLogic（不修改原 net.xml）===
+    # ✅ 新增：构建全红相位状态（所有车道均为红色）
+    def build_all_red_state(total):
+        return "r" * total  # 生成长度为 total 的纯红色字符串
+
+    # === 构建 tlLogic（新增全红相位）===
     new_tl = ET.Element("tlLogic", {
         "id": tl_id,
         "type": "actuated",
@@ -99,38 +114,58 @@ def inject_tl_into_net():
         "offset": "0"
     })
 
+    # === 相位配置：绿灯→黄灯→全红，依次循环 ===
     phase_config = [
-        (ew_straight, green_straight, 'green', True, min_green_straight, max_green_straight),
+        # 东西向直行：绿灯 → 黄灯 → 全红
+        (ew_straight, green_ew_straight, 'green', True, min_green_straight, max_green_straight),
         (ew_straight, yellow_time, 'yellow', False, None, None),
-        (ew_left, green_left, 'green', True, min_green_left, max_green_left),
-        (ew_left, yellow_time, 'yellow', False, None, None),
-        (ns_straight, green_straight, 'green', True, min_green_straight, max_green_straight),
-        (ns_straight, yellow_time, 'yellow', False, None, None),
-        (ns_left, green_left, 'green', True, min_green_left, max_green_left),
-        (ns_left, yellow_time, 'yellow', False, None, None),
-    ]
+        (set(), all_red_time, 'all_red', False, None, None),
 
+        # 东西向左转：绿灯 → 黄灯 → 全红
+        (ew_left, green_ew_left, 'green', True, min_green_left, max_green_left),
+        (ew_left, yellow_time, 'yellow', False, None, None),
+        (set(), all_red_time, 'all_red', False, None, None),
+
+        # 南北向直行：绿灯 → 黄灯 → 全红
+        (ns_straight, green_ns_straight, 'green', True, min_green_straight, max_green_straight),
+        (ns_straight, yellow_time, 'yellow', False, None, None),
+        (set(), all_red_time, 'all_red', False, None, None),
+
+        # 南北向左转：绿灯 → 黄灯 → 全红
+        (ns_left, green_ns_left, 'green', True, min_green_left, max_green_left),
+        (ns_left, yellow_time, 'yellow', False, None, None),
+        (set(), all_red_time, 'all_red', False, None, None),
+    ]
     for active_set, dur, mode, is_green, min_d, max_d in phase_config:
-        state_str = build_state(active_set, right_turns, total, mode)
+        # 区分普通相位和全红相位的状态生成逻辑
+        if mode == 'all_red':
+            state_str = build_all_red_state(total)
+        else:
+            state_str = build_state(active_set, right_turns, total, mode)
+
         attrib = {"duration": str(dur), "state": state_str}
         if is_green:
             attrib["minDur"] = str(min_d)
             attrib["maxDur"] = str(max_d)
+
         new_tl.append(ET.Element("phase", attrib))
-        print(f"[DEBUG] 相位: dur={dur}, state={state_str}" + (f", min={min_d}, max={max_d}" if is_green else ""))
+        # 打印相位信息（全红相位单独标注）
+        if mode == 'all_red':
+            print(f"[DEBUG] 相位: 全红, dur={dur}, state={state_str}")
+        else:
+            print(f"[DEBUG] 相位: {mode}, dur={dur}, state={state_str}" + (
+                f", min={min_d}, max={max_d}" if is_green else ""))
 
     # === 创建 additional 根节点并写入独立文件 ===
     additional = ET.Element("additional")
     additional.append(new_tl)
     rough = ET.tostring(additional, 'utf-8')
     reparsed = minidom.parseString(rough)
-    # tree_out = ET.ElementTree(additional)
-    # tree_out.write(output_tll_file, encoding="utf-8", xml_declaration=True)
+
     with open(output_tll_file, "w", encoding="utf-8") as f:
         f.write(reparsed.toprettyxml(indent="  "))
+
     print(f"[OK] 交通灯逻辑已成功写入: {output_tll_file}")
     print(f"请在 .sumocfg 配置文件中添加：<additional-files value=\"{output_tll_file}\"/>")
 
-
-if __name__ == '__main__':
-    inject_tl_into_net()
+inject_tl_into_net()

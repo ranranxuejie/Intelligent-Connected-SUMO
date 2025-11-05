@@ -1,0 +1,64 @@
+{
+  "simulation": {
+    "start": 0,
+    "end": 3600
+  },
+  "center_x": 0,
+  "center_y": 0,
+  "road_length": 500,
+  "bus_only_length": 200,
+  "speed_kmh": 60,
+  "bus_lane_width": 3.5,
+  "normal_lane_width": 3.5,
+  "time_bin": 300,
+  "LANES": {
+    "east_out": 4,
+    "west_out": 4,
+    "north_out": 2,
+    "south_out": 2
+  },
+  "LANE_FUNCTIONS": {
+    "east_in": "rbssll",
+    "west_in": "tssll",
+    "north_in": "tsl",
+    "south_in": "tsl"
+  },
+  "private_flow": {
+    "east_in_far": 1200,
+    "west_in_far": 1000,
+    "north_in_far": 620,
+    "south_in_far": 620
+  },
+  "turn_ratios": {
+    "east_in_far": [6, 4, 2],
+    "west_in_far": [6, 4, 2],
+    "north_in_far": [3.1, 2, 1],
+    "south_in_far": [3.1, 2, 1]
+  },
+  "vehicle_type_ratios": {
+    "private": 0.85,
+    "truck": 0.10,
+    "taxi": 0.05
+  },
+  "bus_lines": [
+    {
+      "id": "bus_line1",
+      "route_edges": ["east_in_far", "east_in", "west_out"],
+      "stops": [
+        {"edge": "east_in_far", "position": 100, "duration": 30},
+        {"edge": "west_out", "position": 100, "duration": 30}
+      ],
+      "depart_interval": 180,
+      "start_time": 60,
+      "end_time": 3420
+    }
+  ],
+  "signal_timing": {
+    "green_ew_straight": 32,
+    "green_ns_straight": 35,
+    "green_ew_left": 35,
+    "green_ns_left": 35,
+    "yellow_time": 3,
+    "all_red_time": 2
+  }
+}

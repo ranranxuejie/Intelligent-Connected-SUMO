@@ -8,34 +8,29 @@ import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
 # -------------------------- 可调参数 --------------------------
-center_x, center_y = 0, 0
-road_length = 500        # 进口总长
-bus_only_length = 200    # 距路口最后多少米为公交专用
-speed_kmh = 60
+import json
+
+# 读取配置文件
+with open("./generate/config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+# 重建变量
+center_x = config["center_x"]
+center_y = config["center_y"]
+road_length = config["road_length"]
+bus_only_length = config["bus_only_length"]
+speed_kmh = config["speed_kmh"]
 speed_ms = round(speed_kmh / 3.6, 2)
 
-# 8 条边的普通车道数（不含公交专用道）
-LANES = {
-    "east_in": 4,
-    "west_in": 4,
-    "north_in": 4,
-    "south_in": 4,
-    "east_out": 3,
-    "west_out": 3,
-    "north_out": 3,
-    "south_out": 3,
-}
+bus_lane_width = config["bus_lane_width"]
+normal_lane_width = config["normal_lane_width"]
 
-# 进口边是否启用"近段公交专用车道"（右起第二车道）
-BUS_LANE_ENABLED = {
-    "east_in": True,
-    "west_in": True,
-    "north_in": True,
-    "south_in": True,
-}
+LANES = config["LANES"]
+LANE_FUNCTIONS = config["LANE_FUNCTIONS"]
 
-bus_lane_width = 3.5
-normal_lane_width = 3.5
+# 可选：验证加载成功
+print(f"Speed: {speed_kmh} km/h → {speed_ms} m/s")
+print("LANE_FUNCTIONS:", LANE_FUNCTIONS)
 # ----------------------------------------------------------------
 
 OUT_DIR = "./test"
@@ -72,8 +67,6 @@ def write_nodes(path=NODES_FILE):
 def write_edges(path=EDGES_FILE):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     edges = ET.Element("edges")
-
-    # 进口拆分为两段：*_in_far（远段：端点->mid），*_in（近段：mid->center）
     edge_defs = [
         ("east_in_far",  "east_end",  "east_mid",  True,  "east_in"),
         ("east_in",      "east_mid",  "center",    True,  "east_in"),
@@ -83,243 +76,129 @@ def write_edges(path=EDGES_FILE):
         ("north_in",     "north_mid", "center",    True,  "north_in"),
         ("south_in_far", "south_end", "south_mid", True,  "south_in"),
         ("south_in",     "south_mid", "center",    True,  "south_in"),
-
-        ("east_out",  "center", "east_end",  False, None),
-        ("west_out",  "center", "west_end",  False, None),
-        ("north_out", "center", "north_end", False, None),
-        ("south_out", "center", "south_end", False, None),
+        ("east_out",     "center",    "east_end",  False, "east_out"),
+        ("west_out",     "center",    "west_end",  False, "west_out"),
+        ("north_out",    "center",    "north_end", False, "north_out"),
+        ("south_out",    "center",    "south_end", False, "south_out"),
     ]
 
     for edge_id, frm, to, is_in, base_key in edge_defs:
-        base_lanes = int(LANES[base_key]) if base_key else int(LANES[edge_id])
+        # 1. 从LANE_FUNCTIONS获取当前道路的功能字符串（仅进口道有定义）
+        if base_key and base_key in LANE_FUNCTIONS:
+            func_str = LANE_FUNCTIONS[base_key]
+            total_lanes = len(func_str)  # 车道数 = 功能字符串长度
+        else:
+            # 出口道/远段：用原有LANES配置（若需自定义出口道，可新增出口功能字典）
+            total_lanes = int(LANES[edge_id])
 
-        # 仅在近段 *_in 启用公交专用道；远段 *_in_far 混行
-        enable_bus_lane_here = is_in and edge_id.endswith("_in") and BUS_LANE_ENABLED.get(base_key, False)
-        total_lanes = base_lanes + (1 if enable_bus_lane_here else 0)
-
+        # 2. 创建道路节点
         e = ET.SubElement(
-            edges, "edge",
-            id=edge_id, **{"from": frm, "to": to},
-            numLanes=str(total_lanes),
-            speed=str(speed_ms),
+            edges, "edge", id=edge_id, **{"from": frm, "to": to},
+            numLanes=str(total_lanes), speed=str(speed_ms)
         )
+        if base_key and base_key in LANE_FUNCTIONS:
+            # 3. 按功能字符串逐车道生成属性（外侧到内侧，对应字符串索引0到n-1）
+            for lane_idx, func in enumerate(func_str):
+                lane_attrs = {
+                    "index": str(lane_idx),
+                    "speed": str(speed_ms),
+                    "width": str(bus_lane_width if func == 'b' else normal_lane_width)
+                }
 
-        # 公交专用车道：右起第二车道 index=1（若仅1条普通车道，则 index=0）
-        bus_lane_index = None
-        if enable_bus_lane_here:
-            bus_lane_index = 1 if base_lanes >= 1 else 0
+                # 3.1 设置公交专用道属性
+                if (func == 'b')&('far' not in edge_id):
+                    lane_attrs["allow"] = "bus"  # 仅允许公交
+                # else:
+                #     lane_attrs["disallow"] = "bus"  # 禁止公交（非公交道）
 
-        # 是否在此段禁变道（仅近段 *_in）
-        forbid_changes = edge_id.endswith("_in")
+                # 3.2 设置近段禁变道（保持原有逻辑）
+                if edge_id.endswith("_in"):
+                    lane_attrs["changeLeft"] = "emergency"
+                    lane_attrs["changeRight"] = "emergency"
 
-        # 从右到左依次编号
-        for i in range(total_lanes):
-            is_bus_lane = (enable_bus_lane_here and i == bus_lane_index)
-            lane_attrs = {
-                "index": str(i),
-                "speed": str(speed_ms),
-                "width": str(bus_lane_width if is_bus_lane else normal_lane_width),
-            }
-
-            # 近段：公交专用/普通车道权限
-            if enable_bus_lane_here:
-                if is_bus_lane:
-                    lane_attrs["allow"] = "bus"
-                else:
-                    lane_attrs["disallow"] = "bus"
-            # 远段：不设置 allow/disallow（混行）
-
-            # 禁止变道（仅近段）
-            if forbid_changes:
-                lane_attrs["changeLeft"] = "emergency"
-                lane_attrs["changeRight"] = "emergency"
-                # 如需仅允许应急车辆向右变道，可改为：
-                # lane_attrs["changeLeft"] = "none"
-                # lane_attrs["changeRight"] = "emergency"
-
-            ET.SubElement(e, "lane", **lane_attrs)
-
+                ET.SubElement(e, "lane", **lane_attrs)
+        else:
+            for lane_idx in range(total_lanes):
+                lane_attrs = {
+                    "index": str(lane_idx),
+                    "speed": str(speed_ms),
+                    "width": str(bus_lane_width if func == 'b' else normal_lane_width)
+                }
+                ET.SubElement(e, "lane", **lane_attrs)
     with open(path, "wb") as f:
         f.write(prettify(edges))
     print(f"[OK] edges -> {path}")
-
-
 def write_connections(path=CONN_FILE):
     cons = ET.Element("connections")
 
-    # 去向映射（已按你更正后的左右转方向）
-    straight_map = {
-        "east_in": "west_out",
-        "west_in": "east_out",
-        "north_in": "south_out",
-        "south_in": "north_out",
-    }
-    right_map = {
-        "east_in": "north_out",   # 东→右转到北
-        "west_in": "south_out",   # 西→右转到南
-        "north_in": "west_out",   # 北→右转到西
-        "south_in": "east_out",   # 南→右转到东
-    }
-    left_map = {
-        "east_in": "south_out",   # 东→左转到南
-        "west_in": "north_out",   # 西→左转到北
-        "north_in": "east_out",   # 北→左转到东
-        "south_in": "west_out",   # 南→左转到西
-    }
-
-    # 出口车道数（需与 edges 中 numLanes 一致；出口没有公交增量）
+    # 去向映射（保持原有逻辑不变）
+    straight_map = {"east_in": "west_out", "west_in": "east_out", "north_in": "south_out", "south_in": "north_out"}
+    right_map = {"east_in": "north_out", "west_in": "south_out", "north_in": "west_out", "south_in": "east_out"}
+    left_map = {"east_in": "south_out", "west_in": "north_out", "north_in": "east_out", "south_in": "west_out"}
     out_counts = {k: int(LANES[k]) for k in ["east_out", "west_out", "north_out", "south_out"]}
 
-    def add_conn(fr_edge, fr_lane, to_edge, to_lane, allow=None, disallow=None):
-        attrs = {
-            "from": fr_edge,
-            "to": to_edge,
-            "fromLane": str(fr_lane),
-            "toLane": str(to_lane),  # 强制转字符串
-        }
+    def add_conn(fr_edge, fr_lane, to_edge, to_lane, allow=None):
+        attrs = {"from": fr_edge, "to": to_edge, "fromLane": str(fr_lane), "toLane": str(to_lane)}
         if allow: attrs["allow"] = allow
-        if disallow: attrs["disallow"] = disallow
         ET.SubElement(cons, "connection", **attrs)
-    def plan_straight_targets(to_edge):
-        n = max(out_counts.get(to_edge, 1), 1)
-        if n == 1:
-            return [0]
-        if n == 2:
-            return [0, 1]
-        # n >= 3：优先最右(0)、最左(n-1)，再补中间
-        mid = n // 2
-        normals = [0, n - 1, mid] + [i for i in range(n) if i not in (0, n - 1, mid)]
-        return normals
-    def rightmost_to_lane(edge):  # 出口最右
-        return 0
-    def leftmost_to_lane(edge):   # 出口最左
-        n = max(out_counts.get(edge, 1), 1)
-        return max(n - 1, 0)
+
+    # 处理进口道（近段）到出口道的连接
     for in_edge in ["east_in", "west_in", "north_in", "south_in"]:
-        has_bus = BUS_LANE_ENABLED.get(in_edge, False)
-        base_norm = int(LANES[in_edge])
-        total_in = base_norm + (1 if has_bus else 0)
-        if total_in == 0:
+        if in_edge not in LANE_FUNCTIONS:
             continue
+        func_str = LANE_FUNCTIONS[in_edge]
+        # 倒序处理，确保直行车道从左到右对应出口从左到右
+        # func_str = func_str[::-1]
 
-        bus_idx = 1 if (has_bus and base_norm >= 1) else (0 if has_bus else None)
-        normal_indices = [i for i in range(total_in) if i != bus_idx]
+        to_s = straight_map[in_edge]  # 直行去向
+        to_r = right_map[in_edge]    # 右转去向
+        to_l = left_map[in_edge]     # 左转去向
 
-        to_s = straight_map[in_edge]
-        to_r = right_map[in_edge]
-        to_l = left_map[in_edge]
+        # 逐车道解析功能，生成转向连接
 
-        # === 公交专用道：仅直行 → 连接到直行出口的最右侧车道（lane 0） ===
-        if bus_idx is not None:
-            add_conn(in_edge, bus_idx, to_s, "0", allow="bus")  # 显式用字符串 "0"
-        # === 普通车道连接 ===
-        if not normal_indices:
-            continue
+        # 计算['s', 't', 'u']的数量（直行车道数）
+        straight_count = func_str.count('s') + func_str.count('t') + func_str.count('u')+func_str.count('b')
+        left_count = func_str.count('l') + func_str.count('u')
+        for lane_idx, func in enumerate(func_str):
+            # 普通车道：按功能生成转向
+            allow = None  # 非公交道不限制车辆类型（除bus已在edges中禁止）
+            # 右转功能（r/t）：连出口最右车道（0）
+            if func in ['r', 't']:
+                add_conn(in_edge, lane_idx, to_r, "0", allow)
+            # 左转功能（l/u）：连出口最左车道（n_out_l-1）
+            if func in ['l', 'u']:
+                left_count-=1
+                left_target = str(out_counts[to_l] - 1 - left_count)
+                add_conn(in_edge, lane_idx, to_l, left_target, allow)
+            # 直行功能（s/t/u）：连出口对应车道（按出口车道数分配）
+            if func in ['b','s', 't', 'u']:
+                straight_count -= 1
+                # 直行车道按从左到右，对应出口从左到右（如出口3车道：2→1→0）
+                out_lane = str(out_counts[to_s] - 1 - straight_count)
+                add_conn(in_edge, lane_idx, to_s, out_lane, allow)
 
-        normal_indices = sorted(normal_indices)  # [0,1,2,...] 0=最右
-        n_norm = len(normal_indices)
-
-        # 出口车道数
-        n_out_s = out_counts[to_s]
-        n_out_r = out_counts[to_r]
-        n_out_l = out_counts[to_l]
-
-        if n_norm == 1:
-            # 唯一车道：可直行、右转、左转
-            lane = normal_indices[0]
-            # 直行：连到出口唯一车道（0）
-            add_conn(in_edge, lane, to_s, "0")
-            add_conn(in_edge, lane, to_r, "0")
-            add_conn(in_edge, lane, to_l, "0")
-
-        elif n_norm == 2:
-            # 右侧车道（0）→ 右转 + 直行
-            # 左侧车道（1）→ 左转 + 直行
-            right_lane = normal_indices[0]
-            left_lane = normal_indices[1]
-            add_conn(in_edge, right_lane, to_r, "0")
-            add_conn(in_edge, right_lane, to_s, "0")  # 直行到最右
-            add_conn(in_edge, left_lane, to_l, str(n_out_l - 1) if n_out_l > 0 else "0")
-            add_conn(in_edge, left_lane, to_s, str(n_out_s - 1) if n_out_s > 0 else "0")  # 直行到最左
-
-        else:
-            # n_norm >= 3
-            rightmost_norm = normal_indices[0]      # 最右 → 右转
-            leftmost_norm = normal_indices[-1]      # 最左 → 左转
-            middle_norms = normal_indices[1:-1]     # 中间 → 直行
-
-            # 右转：连到出口最右车道（0）
-            add_conn(in_edge, rightmost_norm, to_r, "0")
-
-            # 左转：连到出口最左车道（n-1）
-            left_target = str(n_out_l - 1) if n_out_l > 0 else "0"
-            add_conn(in_edge, leftmost_norm, to_l, left_target)
-
-            # 直行：middle_norms 是 [1, 2, ..., N-2]（从右到左）
-            # 但我们希望：从左到右的中间车道 → 从左到右的出口车道
-            # 所以将 middle_norms 反转，得到从左到右顺序
-            middle_from_left = list(reversed(middle_norms))  # e.g., [3,2,1] if middle_norms=[1,2,3]
-
-            # 出口车道从左到右：[n-1, n-2, ..., 0]
-            out_from_left = list(range(n_out_s - 1, -1, -1))  # e.g., [2,1,0]
-
-            # 如果中间车道多于出口车道，循环使用出口车道（从左开始）
-            for i, in_lane in enumerate(middle_from_left):
-                if n_out_s == 0:
-                    continue
-                out_lane = out_from_left[i % len(out_from_left)]
-                add_conn(in_edge, in_lane, to_s, str(out_lane))
-    # 2) 处理远段到近段的连接（从左侧顺次连接，远端最右侧连接剩余其他车道）
+    # 处理远段到近段的连接（简化：远段车道按索引对应近段车道，非公交道禁止bus）
     for in_edge in ["east_in", "west_in", "north_in", "south_in"]:
+        if in_edge not in LANE_FUNCTIONS:
+            continue
         far_edge = in_edge.replace("_in", "_in_far")
+        func_str = LANE_FUNCTIONS[in_edge]
+        total_lanes = len(func_str)
 
-        # 获取远段和近段的车道数
-        far_base_norm = int(LANES[in_edge])  # 远段的普通车道数
-        far_has_bus = False  # 远段没有公交专用道
-        far_total_lanes = far_base_norm
-
-        has_bus = BUS_LANE_ENABLED.get(in_edge, False)
-        near_base_norm = int(LANES[in_edge])  # 近段的普通车道数
-        near_total_lanes = near_base_norm + (1 if has_bus else 0)
-
-        # 获取近段公交专用道索引
-        near_bus_idx = None
-        if has_bus:
-            near_bus_idx = 1 if (near_base_norm >= 1) else (0 if has_bus else None)
-
-        # 一一对应连接：远段车道索引对应近段车道索引
-        # 远段普通车道（从左到右）连接到近段普通车道（从左到右）
-        far_normal_lanes = list(range(far_total_lanes))  # 远段所有普通车道
-        near_normal_lanes = [i for i in range(near_total_lanes) if i != near_bus_idx]  # 近段非公交专用道
-
-        # 按索引顺序一一对应连接
-        for i in range(min(len(far_normal_lanes), len(near_normal_lanes))):
-            far_lane = far_normal_lanes[i]
-            near_lane = near_normal_lanes[i]
-            # 普通车道，不允许公交通过
-            add_conn(far_edge, far_lane, in_edge, near_lane, disallow="bus")
-
-        # 如果远段车道数多于近段普通车道数，剩余的远段车道连接到近段公交专用道（只允许公交通过）
-        if near_bus_idx is not None:
-            for i in range(len(far_normal_lanes)):
-                if i >= len(near_normal_lanes):  # 剩余的远段车道
-                    far_lane = far_normal_lanes[i]
-                    # 连接到公交专用道，只允许公交通过
-                    add_conn(far_edge, far_lane, in_edge, near_bus_idx, allow="bus")
-
-                # 远段所有车道也可以连接到公交专用道（但只允许公交通过）
-                far_lane = far_normal_lanes[i]
-                add_conn(far_edge, far_lane, in_edge, near_bus_idx, allow="bus")
+        # 远段车道数 = 近段车道数（无公交道，功能同近段非公交道）
+        for lane_idx in range(total_lanes):
+            func = func_str[lane_idx]
+            # 近段公交道：仅允许bus从远段进入
+            if func == 'b':
+                add_conn(far_edge, lane_idx, in_edge, lane_idx, allow="bus")
+            # 近段普通车道：禁止bus
+            else:
+                add_conn(far_edge, lane_idx, in_edge, lane_idx, allow=None)
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(prettify(cons))
-    print(f"[OK] connections ->", path)
-
-
-write_nodes()
-write_edges()
-write_connections()
+    print(f"[OK] connections -> {path}")
 
 def build_net(nodes=NODES_FILE, edges=EDGES_FILE, out_net=NET_FILE, conns_path=CONN_FILE):
     netconvert = shutil.which("netconvert")
@@ -336,4 +215,9 @@ def build_net(nodes=NODES_FILE, edges=EDGES_FILE, out_net=NET_FILE, conns_path=C
     subprocess.run(cmd, check=True)
     print(f"[OK] net -> {out_net}")
     return True
+
+
+write_nodes()
+write_edges()
+write_connections()
 build_net()

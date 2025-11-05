@@ -1,78 +1,42 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import json
 
-# -------------------------- 交通需求核心参数（可快速调整） --------------------------
-# 仿真时间设置（单位：秒）
-simulation_start = 0
-simulation_end = 3600  # 1小时仿真时长（早高峰）
+# 读取配置文件
+with open("./generate/config.json", "r", encoding="utf-8") as f:
+    config = json.load(f)
 
-# 私家车流量配置（单位：辆/小时）——按进口边总量
-private_flow = {
-    "east_in_far": 600,
-    "west_in_far": 500,
-    "north_in_far": 400,
-    "south_in_far": 450
-}
+# 仿真时间
+simulation_start = config["simulation"]["start"]
+simulation_end = config["simulation"]["end"]
 
-# 转向比例配置（单位：小数）顺序：直、左、右（合计=1）
-turn_ratios = {
-    "east_in_far": [0.6, 0.2, 0.2],
-    "west_in_far": [0.5, 0.3, 0.2],
-    "north_in_far": [0.55, 0.25, 0.2],
-    "south_in_far": [0.5, 0.2, 0.3]
-}
+# 私家车流量（辆/小时）
+private_flow = config["private_flow"]
 
-# 车型比例（单位：小数，合计=1）
-vehicle_type_ratios = {
-    "private": 0.85,
-    "truck": 0.10,
-    "taxi": 0.05
-}
+# 转向比例（自动归一化为小数）
+turn_ratios = {}
+for edge, ratios in config["turn_ratios"].items():
+    total = sum(ratios)
+    if total == 0:
+        turn_ratios[edge] = [0.0, 0.0, 0.0]
+    else:
+        turn_ratios[edge] = [r / total for r in ratios]  # [直行, 左转, 右转]
 
-# 公交配置（注意：route_edges 仅包含边 id，不包含节点）
-bus_lines = [
-    {
-        "id": "bus_line1",  # 东向西直行
-        "route_edges": ["east_in_far", "east_in", "west_out"],  # 包含远段到近段再到出口
-        "stops": [
-            {"edge": "east_in_far", "position": 100, "duration": 30},
-            {"edge": "west_out", "position": 100, "duration": 30}
-        ],
-        "depart_interval": 180,
-        "start_time": 60,
-        "end_time": 3420
-    },
-    {
-        "id": "bus_line2",  # 北向南直行
-        "route_edges": ["north_in_far", "north_in", "south_out"],  # 包含远段到近段再到出口
-        "stops": [
-            {"edge": "north_in_far", "position": 100, "duration": 30},
-            {"edge": "south_out", "position": 100, "duration": 30}
-        ],
-        "depart_interval": 240,
-        "start_time": 60,
-        "end_time": 3420
-    }
-]
+# 车型比例
+vehicle_type_ratios = config["vehicle_type_ratios"]
 
-# 早高峰流量波动参数（高斯分布，以 1 为平均尺度）
-peak_hour = 1800  # 高峰中心时间（秒）
-peak_std = 600  # 标准差（秒）
-time_bin = 300  # 生成流量的时间粒度（秒），默认5分钟
+# 公交线路
+bus_lines = config["bus_lines"]
+time_bin = config["time_bin"]
+
 # ------------------------------------------------------------------------------
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 import math
-
+import random
 # 生成路由文件
 route_filename = "./test/traffic.rou.xml"
-
-
-def gaussian_scale(t, mu, sigma):
-    # 原始高斯值
-    val = math.exp(-0.5 * ((t - mu) / sigma) ** 2)
-    return val
 
 
 def build_time_bins(start_s, end_s, bin_s):
@@ -84,17 +48,23 @@ def build_time_bins(start_s, end_s, bin_s):
     return bins
 
 
-def normalize_scale_over_bins(bins, mu, sigma):
-    # 计算每个时间片的平均尺度并归一化，使全时段平均尺度为 1
-    raw = []
-    for b, e in bins:
-        tm = 0.5 * (b + e)
-        raw.append(gaussian_scale(tm, mu, sigma))
-    avg = sum(raw) / len(raw) if raw else 1.0
-    if avg == 0:
-        return [1.0 for _ in raw]
-    return [x / avg for x in raw]
+def normalize_scale_over_bins(bins):
+    """
+    生成每个时间片的小幅随机波动尺度，并归一化使平均值为 1。
+    mu 和 sigma 参数保留以兼容调用，但不再使用。
+    """
+    n = len(bins)
+    if n == 0:
+        return []
 
+    # 在 [0.8, 1.2] 范围内生成随机值（可调整范围）
+    raw = [random.uniform(0.8, 1.2) for _ in bins]
+
+    # 归一化：使平均值为 1
+    avg = sum(raw) / n
+    if avg == 0:
+        return [1.0] * n
+    return [x / avg for x in raw]
 
 def prettify(elem):
     xml_bytes = ET.tostring(elem, encoding="utf-8")
@@ -130,24 +100,24 @@ def generate_routes():
     # 每个进口三条 route（注意仅写边 id，内部连接由 SUMO 自动衔接）
     route_map = {
         "east_in_far": {
-            "straight": ("r_east_straight", "east_in_far east_in west_out"),
-            "left": ("r_east_left", "east_in_far east_in north_out"),
-            "right": ("r_east_right", "east_in_far east_in south_out"),
+            "straight": ("r_east_straight", "east_in_far east_in west_out"),  # 东→直行→西出口（正确）
+            "left": ("r_east_left", "east_in_far east_in south_out"),  # 东→左转→南出口（正确，原正确无需改）
+            "right": ("r_east_right", "east_in_far east_in north_out"),  # 东→右转→北出口（原南→改为北，纠正）
         },
         "west_in_far": {
-            "straight": ("r_west_straight", "west_in_far west_in east_out"),
-            "left": ("r_west_left", "west_in_far west_in south_out"),
-            "right": ("r_west_right", "west_in_far west_in north_out"),
+            "straight": ("r_west_straight", "west_in_far west_in east_out"),  # 西→直行→东出口（正确）
+            "left": ("r_west_left", "west_in_far west_in north_out"),  # 西→左转→北出口（原南→改为北，纠正）
+            "right": ("r_west_right", "west_in_far west_in south_out"),  # 西→右转→南出口（原北→改为南，纠正）
         },
         "north_in_far": {
-            "straight": ("r_north_straight", "north_in_far north_in south_out"),
-            "left": ("r_north_left", "north_in_far north_in east_out"),
-            "right": ("r_north_right", "north_in_far north_in west_out"),
+            "straight": ("r_north_straight", "north_in_far north_in south_out"),  # 北→直行→南出口（正确）
+            "left": ("r_north_left", "north_in_far north_in east_out"),  # 北→左转→东出口（原正确无需改）
+            "right": ("r_north_right", "north_in_far north_in west_out"),  # 北→右转→西出口（原正确无需改）
         },
         "south_in_far": {
-            "straight": ("r_south_straight", "south_in_far south_in north_out"),
-            "left": ("r_south_left", "south_in_far south_in west_out"),
-            "right": ("r_south_right", "south_in_far south_in east_out"),
+            "straight": ("r_south_straight", "south_in_far south_in north_out"),  # 南→直行→北出口（正确）
+            "left": ("r_south_left", "south_in_far south_in west_out"),  # 南→左转→西出口（原正确无需改）
+            "right": ("r_south_right", "south_in_far south_in east_out"),  # 南→右转→东出口（原正确无需改）
         },
     }
 
@@ -167,12 +137,13 @@ def generate_routes():
 
     # 1) 收集私家车流（按时间片 flow + 路线引用）
     bins = build_time_bins(simulation_start, simulation_end, time_bin)
-    scales = normalize_scale_over_bins(bins, peak_hour, peak_std)
+    scales = normalize_scale_over_bins(bins)
 
     flow_idx = 0
     for (b, e), scale in zip(bins, scales):
         for from_edge, base_vph in private_flow.items():
             straight_ratio, left_ratio, right_ratio = turn_ratios[from_edge]
+            straight_ratio, left_ratio, right_ratio = straight_ratio / sum([straight_ratio, left_ratio, right_ratio]), left_ratio / sum([straight_ratio, left_ratio, right_ratio]), right_ratio / sum([straight_ratio, left_ratio, right_ratio])
             od_vph = {
                 "straight": base_vph * straight_ratio * scale,
                 "left": base_vph * left_ratio * scale,
@@ -191,7 +162,7 @@ def generate_routes():
                 elif from_edge == "south_in_far":
                     direction = "south"
                 else:
-                    direction = from_edge[:4]  # 备用方案
+                    direction = from_edge.split("_")[0]  # 备用方案
 
                 if turn == "straight":
                     rid = f"r_{direction}_straight"
@@ -299,10 +270,6 @@ def generate_additional():
     print(f"公交站点文件生成成功：{additional_filename}")
 
 
-def main():
-    generate_routes()
-    generate_additional()
-
-
-if __name__ == "__main__":
-    main()
+random.seed(42)
+generate_routes()
+generate_additional()

@@ -1,7 +1,0 @@
-<?xml version="1.0" ?>
-<additional>
-  <busStop id="bus_line1_stop_0" lane="east_in_far_0" startPos="80" endPos="120" friendlyPos="true"/>
-  <busStop id="bus_line1_stop_1" lane="west_out_0" startPos="80" endPos="120" friendlyPos="true"/>
-  <busStop id="bus_line2_stop_0" lane="north_in_far_0" startPos="80" endPos="120" friendlyPos="true"/>
-  <busStop id="bus_line2_stop_1" lane="south_out_0" startPos="80" endPos="120" friendlyPos="true"/>
-</additional>
