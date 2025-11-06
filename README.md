@@ -4,35 +4,6 @@
 
 本项目是一个基于SUMO（Simulation of Urban MObility）的智能交通信号控制系统仿真平台，实现了公交车优先通行、交通流量分析、排队长度统计等功能，旨在通过智能化的交通信号控制提升城市交通效率。
 
-## 目录结构
-
-```
-├── .gitignore               # Git忽略文件配置
-├── bus.py                   # 公交车优先控制主程序
-├── create_intersection.py   # 交叉路口创建工具
-├── crossroad_simulation.sumocfg  # SUMO仿真配置文件
-├── generate/                # 仿真文件生成工具
-│   ├── add.py               # 附加配置生成
-│   ├── demand.py            # 交通需求生成
-│   └── network.py           # 道路网络生成
-├── output/                  # 仿真结果输出目录
-│   ├── [timestamp]/         # 按时间戳命名的结果文件夹
-│   ├── bench_mark.md        # 基准测试结果
-│   ├── fcd.xml              # 浮动车数据
-│   ├── queue.xml            # 排队数据
-│   └── tripinfo.xml         # 行程信息数据
-├── plot.py                  # 数据可视化脚本
-├── quick_start.md           # 快速开始指南（待完善）
-├── sumo.log                 # SUMO日志文件
-└── test/                    # 测试配置文件
-    ├── bus_stops.add.xml    # 公交站点配置
-    ├── connections.con.xml  # 道路连接配置
-    ├── crossroad.net.xml    # 道路网络配置
-    ├── edges.edg.xml        # 道路边缘配置
-    ├── nodes.nod.xml        # 道路节点配置
-    ├── traffic.rou.xml      # 交通流配置
-    └── traffic_light.add.xml  # 交通灯配置
-```
 ## 核心功能模块
 
 ### 1. 公交车优先控制系统（bus.py）
@@ -51,7 +22,7 @@
 * **排队长度分析**：按进口道方向和车道类型（公交专用道、直行车道、左转车道）统计最大排队长度和平均排队长度
 * **XML文件修复**：处理SUMO输出的可能不完整的XML文件，确保数据完整性
 
-### 3. 仿真文件生成系统（generate/）
+### 3. 仿真文件生成系统（generate.py）
 
 提供了灵活的仿真场景配置工具：
 
@@ -81,11 +52,15 @@
 #### 基础仿真
 
 1. 准备仿真配置文件（位于test/目录下）
+
+   ```
+   python generate.py
+   ```
 2. 运行主仿真程序：
+
    ```bash
    python bus.py
    ```
-
 3. 查看输出结果（位于output/[timestamp]/目录下）
 
 #### 结果分析

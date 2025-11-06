@@ -1,6 +1,5 @@
 
 MAX_EXTENSION = 15          # 最大延长秒数
-EXTEND_THRESHOLD = 3        # 延长触发阈值（剩余绿灯 < X 秒）
 EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
 QUEUE_THRESHOLD = 1         # 禁止红灯早断的队列长度阈值（超过X辆车排队时不执行早断）
 
@@ -15,7 +14,6 @@ import shutil
 def save_current_params():
     with open(OUTPUT_FOLDER + "params.txt", "w") as f:
         f.write(f"MAX_EXTENSION={MAX_EXTENSION}\n")
-        f.write(f"EXTEND_THRESHOLD={EXTEND_THRESHOLD}\n")
         f.write(f"EARLY_GREEN_DIST={EARLY_GREEN_DIST}\n")
         f.write(f"QUEUE_THRESHOLD={QUEUE_THRESHOLD}\n")
         f.write(f"BUS_FIRST={BUS_FIRST}\n")
@@ -133,18 +131,22 @@ def handle_bus_priority(tls_id, bus_id):
     # ✅ 情况1：当前是绿灯 → 延长
     # ==============================
     if is_current_green and dist_to_stop > 0:
+        # 获取当前已延长时间
         total_extended = _bus_tsp_state.get(key, {}).get('total_extended', 0.0)
-        if total_extended < MAX_EXTENSION:
-
-            if remaining < EXTEND_THRESHOLD:
-                extra = min(MAX_EXTENSION - total_extended, EXTEND_THRESHOLD - remaining + 1.0)
-                if extra > 0:
-                    # ⭐ 关键：延长当前相位的剩余时间
-                    new_remaining = remaining + extra
-                    traci.trafficlight.setPhaseDuration(tls_id, new_remaining)
-                    _bus_tsp_state[key] = {'total_extended': total_extended + extra}
-                    print(f"{current_time:.1f}s [TSP] 🚦 绿灯延长！ {extra:.1f}s ({total_extended + extra:.1f}/{MAX_EXTENSION}) for {bus_id}")
-                    _bus_tsp_history[bus_id] = {'type':'Green Light Early Activation','time': total_extended + extra}
+        if total_extended <= MAX_EXTENSION:
+            # if remaining <= EXTEND_THRESHOLD:
+            # 获取公交车速度（m/s）
+            bus_speed = traci.vehicle.getSpeed(bus_id)
+            expect_time_to_stop = dist_to_stop / bus_speed
+            # 计算可延长时间（秒）
+            extra = min(MAX_EXTENSION - total_extended, expect_time_to_stop - remaining + 1)
+            if extra > 0:
+                # ⭐ 关键：延长当前相位的剩余时间
+                new_remaining = remaining + extra
+                traci.trafficlight.setPhaseDuration(tls_id, new_remaining)
+                _bus_tsp_state[key] = {'total_extended': total_extended + extra}
+                print(f"{current_time:.1f}s [TSP] 🚦 绿灯延长！ {extra:.1f}s ({total_extended + extra:.1f}/{MAX_EXTENSION}) for {bus_id}")
+                _bus_tsp_history[bus_id] = {'type':'Green Light Early Activation','time': total_extended + extra}
         return
 
     # ==============================
@@ -181,12 +183,11 @@ traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg","--tripinfo-output
              f"{OUTPUT_FOLDER}tripinfo.xml","--queue-output",f"{OUTPUT_FOLDER}queue.xml",
              "--start"])
 simu_speed = 0 # 最大仿真倍速
-BUS_FIRST = False
+BUS_FIRST = True
 save_current_params()   # 仿真前备份可复现的全部支持文件
 view_id = "View #0"  # 对应默认视图ID
 traci.gui.setZoom(view_id, 1200)
 traci.gui.setSchema(view_id, "real world")  # 核心：切换到真实世界配色方案
-
 
 time_per_step = 0.1/simu_speed if simu_speed>0 else 0.1
 t0 = time.time()
@@ -201,10 +202,12 @@ while traci.simulation.getMinExpectedNumber() > 0:
                 if next_tls_list:
                     tls_id = next_tls_list[0][0]
                     handle_bus_priority(tls_id, veh_id)
-    # 控制仿真速度
-    if simu_speed>0:
-        time.sleep(max(0, time_per_step - (time.time() - t0)))
-        t0 = time.time()
+        # 控制仿真速度
+        if simu_speed>0:
+            time.sleep(max(0, time_per_step - (time.time() - t0)))
+            t0 = time.time()
 traci.close()
 time.sleep(1)
 analyze_all(OUTPUT_FOLDER)
+with open(f"{OUTPUT_FOLDER}bus_tsp_history.json", "w") as f:
+    json.dump(_bus_tsp_history, f, indent=4)
