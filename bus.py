@@ -1,7 +1,7 @@
 
 MAX_EXTENSION = 15          # 最大延长秒数
 EARLY_GREEN_DIST = 100       # 红灯早断触发距离（米）
-QUEUE_THRESHOLD = 1         # 禁止红灯早断的队列长度阈值（超过X辆车排队时不执行早断）
+QUEUE_THRESHOLD = 0.1         # 禁止红灯早断的占用率阈值（超过X%车占用时不执行早断）
 
 import traci
 import time
@@ -38,11 +38,12 @@ def is_current_green_lane_empty(green_lanes):
     返回：True（无排队）/ False（有排队）
     """
     for lane_id in green_lanes:
+        # 获取车道的车辆数量
         # 获取车道的排队长度（sumo内置：静止或低速行驶的车辆总长度，单位米）
-        queue_length = (traci.lane.getLastStepHaltingNumber(lane_id))
+        occupancy = (traci.lane.getLastStepOccupancy(lane_id))
         # 也可以用车辆数判断：traci.lane.getLastStepVehicleNumber(lane_id) > 0
-        if queue_length > QUEUE_THRESHOLD:
-            print(f"[TSP] 当前绿灯车道 {lane_id} 有排队（长度：{queue_length:.1f}m），不执行红灯早断")
+        if occupancy > QUEUE_THRESHOLD:
+            print(f"[TSP] 当前绿灯车道 {lane_id} 有车（占用率：{occupancy:.1f}），不执行红灯早断")
             return False
     return True
 
@@ -147,6 +148,8 @@ def handle_bus_priority(tls_id, bus_id):
                 _bus_tsp_state[key] = {'total_extended': total_extended + extra}
                 print(f"{current_time:.1f}s [TSP] 🚦 绿灯延长！ {extra:.1f}s ({total_extended + extra:.1f}/{MAX_EXTENSION}) for {bus_id}")
                 _bus_tsp_history[bus_id] = {'type':'Green Light Early Activation','time': total_extended + extra}
+                # 修改车辆的颜色为绿色
+                traci.vehicle.setColor(bus_id, (0, 255, 0, 255))
         return
 
     # ==============================
@@ -167,6 +170,9 @@ def handle_bus_priority(tls_id, bus_id):
             traci.trafficlight.setPhase(tls_id, traci.trafficlight.getPhase(tls_id)+1)
             print(f"{current_time:.1f}s [TSP] 🚦 红灯早断！跳到相位 {need_phase_idx} 供 {bus_id} (距路口 {dist_to_stop:.1f}m)")
             _bus_tsp_history[bus_id] = {'type':'Red Light Early Termination','time': remaining}
+            # 修改车辆的颜色为红色
+            traci.vehicle.setColor(bus_id, (255, 0, 0, 255))
+        return
 
 #%%
 # ===== 全局状态 =====
@@ -186,7 +192,7 @@ simu_speed = 0 # 最大仿真倍速
 BUS_FIRST = True
 save_current_params()   # 仿真前备份可复现的全部支持文件
 view_id = "View #0"  # 对应默认视图ID
-traci.gui.setZoom(view_id, 1200)
+traci.gui.setZoom(view_id, 800)
 traci.gui.setSchema(view_id, "real world")  # 核心：切换到真实世界配色方案
 
 time_per_step = 0.1/simu_speed if simu_speed>0 else 0.1

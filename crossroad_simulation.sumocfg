@@ -16,7 +16,9 @@
 	  <device.emissions.probability value="1"/>
     <lateral-resolution value="0.2"/>
   </processing>
-
+  <gui_only>
+    <gui-settings-file value="test/view_setting.xml"/>
+  </gui_only>
   <report>
     <no-step-log value="true"/>
     <verbose value="true"/>
