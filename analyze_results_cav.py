@@ -5,24 +5,24 @@ import matplotlib.cm as cm
 import matplotlib.colors as colors
 import numpy as np
 
-# ================= 配置区域 =================
-# 1. FCD 文件路径
-FCD_FILE = "output/20251122_20_cav_first/fcd.xml"
 
-# 2. 目标车道前缀
-TARGET_LANE_ID = "east_in_3"
-
-# 3. 车道长度 (米)
-LANE_LENGTH = 200
-
-# 4. 筛选特定类型的车
-TARGET_VTYPE = "taxi"
-
-
-# ===========================================
-
-def plot_split_trajectory():
+def plot_split_trajectory(test_name = '20251122_20_cav_first',in_dir = 'east'):
     trajectories = {}
+    # ================= 配置区域 =================
+    # 1. FCD 文件路径
+    FCD_FILE = f"output/{test_name}/fcd.xml"
+
+    # 2. 目标车道前缀
+    TARGET_LANE_ID = f"{in_dir}_in_3"
+
+    # 3. 车道长度 (米)
+    LANE_LENGTH = 200
+
+    # 4. 筛选特定类型的车
+    TARGET_VTYPE = "taxi"
+
+
+    # ===========================================
 
     print(f"正在解析 {FCD_FILE} ...")
 
@@ -133,9 +133,12 @@ def plot_split_trajectory():
     # 调整布局防止重叠 (因为我们手动加了colorbar，所以不用tight_layout的全图模式)
     # plt.tight_layout() # 可选，有时会和add_axes冲突
     os.makedirs('./results', exist_ok=True)
-    plt.savefig(f'./results/taxi_trajectory_east.png')
+    plt.savefig(f'./results/trajectory_{in_dir}_{test_name}.png')
     plt.show()
 
 
-if __name__ == "__main__":
-    plot_split_trajectory()
+
+plot_split_trajectory('20251122_20_cav_first','east')
+plot_split_trajectory('20251122_20_cav_first','west')
+plot_split_trajectory('20251122_20_normal','east')
+plot_split_trajectory('20251122_20_normal','west')
