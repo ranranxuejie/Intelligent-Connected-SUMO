@@ -136,11 +136,10 @@ def plot_split_trajectory(test_name = '20251122_20_cav_first',in_dir = 'east'):
     plt.savefig(f'./results/trajectory_{in_dir}_{test_name}.png')
     plt.show()
 
-
-
-# plot_split_trajectory('20251122_20_cav_first','east')
-# plot_split_trajectory('20251122_20_cav_first','west')
-# plot_split_trajectory('20251122_20_normal','east')
-# plot_split_trajectory('20251122_20_normal','west')
-plot_split_trajectory('20251122_22_cav_first','east')
-plot_split_trajectory('20251122_22_cav_first','west')
+for MIN_SPEED in [0,15/3.6,20/3.6,25/3.6]:
+    if MIN_SPEED==0:
+        out_folder = 'normal'
+    else:
+        out_folder = f'cav_first_{MIN_SPEED:.2f}'
+    plot_split_trajectory(f'{out_folder}','east')
+    plot_split_trajectory(f'{out_folder}','west')
