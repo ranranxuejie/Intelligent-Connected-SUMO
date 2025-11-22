@@ -138,7 +138,9 @@ def plot_split_trajectory(test_name = '20251122_20_cav_first',in_dir = 'east'):
 
 
 
-plot_split_trajectory('20251122_20_cav_first','east')
-plot_split_trajectory('20251122_20_cav_first','west')
-plot_split_trajectory('20251122_20_normal','east')
-plot_split_trajectory('20251122_20_normal','west')
+# plot_split_trajectory('20251122_20_cav_first','east')
+# plot_split_trajectory('20251122_20_cav_first','west')
+# plot_split_trajectory('20251122_20_normal','east')
+# plot_split_trajectory('20251122_20_normal','west')
+plot_split_trajectory('20251122_22_cav_first','east')
+plot_split_trajectory('20251122_22_cav_first','west')

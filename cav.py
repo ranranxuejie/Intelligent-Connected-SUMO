@@ -2,7 +2,7 @@ import matplotlib.cm
 import traci
 import time
 import matplotlib.pyplot as plt
-MIN_SPEED=15/3.6
+from tqdm import tqdm
 colormap = plt.get_cmap('RdYlGn')
 import os
 
@@ -39,7 +39,7 @@ def set_cav_route(veh_id):
         num_veh = sum([1 for loc in all_veh_loc if loc<dis_to_stop])
         # 设置车辆平稳减速（减速度较小）a=(v**2)/(2x)
         target_accl = speed**2/((dis_to_stop-num_veh*6)*2)
-        traci.vehicle.setAccel(veh_id,target_accl)
+        traci.vehicle.setDecel(veh_id,max(MIN_ACCLERATION,target_accl))
         print(f"车辆{veh_id}预计无法通过，设置为减速")
         traci.vehicle.setColor(veh_id, (255, 0, 0, 255))
         set_veh_list.append(veh_id)
@@ -91,8 +91,8 @@ def clear_set_route(ID_list):
             # 把MIN_SPEED的设置变成原来默认的速度
             traci.vehicle.setSpeed(veh_id,MAX_SPEED)
             # 把减速度设置为原来默认的
-            traci.vehicle.setAccel(veh_id,MAX_ACCLERATION)
-            nolonger_set_veh_list.remove(veh_id)
+            traci.vehicle.setDecel(veh_id,MAX_ACCLERATION)
+            # nolonger_set_veh_list.remove(veh_id)
 
 def get_all_cav_loc(ID_list):
     # 查找每个车道的allowed
@@ -116,21 +116,29 @@ def get_all_cav_loc(ID_list):
         cav_loc[lane] = sorted(cav_loc[lane])
     return cav_loc
 
+USE_GUI = False
+# for MIN_SPEED in [0,15/3.6,20/3.6,25/3.6]:
+MIN_SPEED = [0,15/3.6,20/3.6,25/3.6][3]
 
-
-
-
-CAV_FIRST = False
-OUTPUT_FOLDER = f"output/{time.strftime('%Y%m%d_%H')}_{'cav_first' if CAV_FIRST else 'normal'}/"
+if MIN_SPEED==0:
+    CAV_FIRST = False
+    output_name = 'normal'
+else:
+    output_name = f'cav_first_{MIN_SPEED:.2f}'
+    CAV_FIRST = True
+OUTPUT_FOLDER = f"output/{output_name}/"
+# if os.path.exists(OUTPUT_FOLDER+'tripinfo.xml'):
+#     if input(f"是否覆盖{output_name}的结果？(y/n)")!='y':
+#         continue
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
 try:
-    traci.close()
+    traci.close(wait=False)
 except:
     pass
 set_veh_list=[]
 nolonger_set_veh_list=[]
-traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg",
+traci.start(["sumo", "-c", "crossroad_simulation.sumocfg",
              "--tripinfo-output",f"{OUTPUT_FOLDER}tripinfo.xml",
              # "--queue-output",f"{OUTPUT_FOLDER}queue.xml",
              # 2. Emission: 包含每一秒的油耗、CO2、NOx排放
@@ -139,12 +147,14 @@ traci.start(["sumo-gui", "-c", "crossroad_simulation.sumocfg",
              "--fcd-output", f"{OUTPUT_FOLDER}fcd.xml",
              "--start"])
 MAX_SPEED = traci.lane.getMaxSpeed('east_in_3')
-MAX_ACCLERATION = traci.vehicletype.getAccel('taxi')
+MAX_ACCLERATION = traci.vehicletype.getDecel('taxi')
+MIN_ACCLERATION = MAX_ACCLERATION/3
 simu_speed = 0 # 最大仿真倍速
+if USE_GUI:
+    view_id = "View #0"  # 对应默认视图ID
+    traci.gui.setZoom(view_id, 800)
+    traci.gui.setSchema(view_id, "real world")  # 核心：切换到真实世界配色方案
 
-view_id = "View #0"  # 对应默认视图ID
-traci.gui.setZoom(view_id, 800)
-traci.gui.setSchema(view_id, "real world")  # 核心：切换到真实世界配色方案
 
 time_per_step = 0.1/simu_speed if simu_speed>0 else 0.1
 t0 = time.time()
@@ -154,11 +164,12 @@ t0 = time.time()
 # debug = False
 tls_program = (traci.trafficlight.getAllProgramLogics('center'))[1].phases
 phase_duration = [tls_program[i].duration for i in range(len(tls_program))]
-
+pbar = tqdm(total=37250)
 # for i in range(1000):
 i = 0
 while traci.simulation.getMinExpectedNumber() > 0:
     i += 1
+    pbar.update(1)
     traci.simulationStep()
     if not CAV_FIRST:
         continue
@@ -179,3 +190,4 @@ while traci.simulation.getMinExpectedNumber() > 0:
         # if simu_speed>0:
         #     time.sleep(max(0, time_per_step - (time.time() - t0)))
         #     t0 = time.time()
+# traci.close(wait=False)
