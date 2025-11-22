@@ -77,11 +77,13 @@ def generate_routes():
     bus_line_by_id = {line["id"]: line for line in bus_lines}
     # 1) 车型与分布：flow 可直接 type="mix" 抽样
     ET.SubElement(root, "vType", id="private", vClass="private", length="4.5", width="1.8",
-                  maxSpeed="50", accel="2.6", decel="4.5", sigma="0.5",color="1,1,1")
+                  maxSpeed="50", accel="2.6", decel="4.5", sigma="0.5")
     ET.SubElement(root, "vType", id="truck", vClass="truck", length="7.5", width="2.5",
                   maxSpeed="40", accel="1.8", decel="3.5", sigma="0.6")
-    ET.SubElement(root,"vType" , id ="taxi",vClass="taxi",length="4.5", width="1.8",
-                  maxSpeed="50", accel="2.6", decel="4.5", sigma="0.5",color="1,0,0")
+    ET.SubElement(root, "vType", id="taxi", vClass="taxi", length="4.5", width="1.8",
+                  maxSpeed="50", accel="2.8", decel="4.8", sigma="0.4")
+    ET.SubElement(root, "vType", id="bus", vClass="bus", length="12", width="2.5",
+                  maxSpeed="40", accel="1.5", decel="3.0", sigma="0.3")
 
     vtd = ET.SubElement(root, "vTypeDistribution", id="mix")
     ET.SubElement(vtd, "vType", id="mix_private", vClass="private",
@@ -91,8 +93,8 @@ def generate_routes():
                   length="7.5", width="2.5", maxSpeed="40", accel="1.8", decel="3.5",
                   sigma="0.6", probability=str(vehicle_type_ratios["truck"]))
     ET.SubElement(vtd, "vType", id="mix_taxi", vClass="taxi",
-                  length="4.5", width="1.8", maxSpeed="50", accel="2.6", decel="4.5",
-                  sigma="0.5", probability=str(vehicle_type_ratios["taxi"]))
+                  length="4.5", width="1.8", maxSpeed="50", accel="2.8", decel="4.8",
+                  sigma="0.4", probability=str(vehicle_type_ratios["taxi"]))
 
     # -------------------------- 定义固定路线（直/左/右） --------------------------
     # 每个进口三条 route（注意仅写边 id，内部连接由 SUMO 自动衔接）
@@ -243,10 +245,12 @@ def generate_routes():
         f.write(reparsed.toprettyxml(indent="  "))
     print(f"交通需求（流量）文件生成成功：{route_filename}")
 
+
 def generate_additional():
     # 生成公交站点定义文件
     additional_filename = "./test/bus_stops.add.xml"
     root = ET.Element("additional")
+
     for line in bus_lines:
         for i, stop in enumerate(line["stops"]):
             # 使用第一个车道

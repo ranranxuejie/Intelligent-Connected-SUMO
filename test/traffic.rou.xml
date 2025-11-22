@@ -1,13 +1,12 @@
 <?xml version="1.0" ?>
 <routes>
-  <vType id="private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5"/>
+  <vType id="private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" color="1,1,1"/>
   <vType id="truck" vClass="truck" length="7.5" width="2.5" maxSpeed="40" accel="1.8" decel="3.5" sigma="0.6"/>
-  <vType id="taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.8" decel="4.8" sigma="0.4"/>
-  <vType id="bus" vClass="bus" length="12" width="2.5" maxSpeed="40" accel="1.5" decel="3.0" sigma="0.3"/>
+  <vType id="taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" color="1,0,0"/>
   <vTypeDistribution id="mix">
-    <vType id="mix_private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.85"/>
+    <vType id="mix_private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.7"/>
     <vType id="mix_truck" vClass="truck" length="7.5" width="2.5" maxSpeed="40" accel="1.8" decel="3.5" sigma="0.6" probability="0.1"/>
-    <vType id="mix_taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.8" decel="4.8" sigma="0.4" probability="0.05"/>
+    <vType id="mix_taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.2"/>
   </vTypeDistribution>
   <route id="r_east_straight" edges="east_in_far east_in west_out"/>
   <route id="r_east_left" edges="east_in_far east_in south_out"/>
@@ -21,7 +20,6 @@
   <route id="r_south_straight" edges="south_in_far south_in north_out"/>
   <route id="r_south_left" edges="south_in_far south_in west_out"/>
   <route id="r_south_right" edges="south_in_far south_in east_out"/>
-  <route id="bus_line1_route" edges="east_in_far east_in west_out"/>
   <flow id="f_0_east_in_far_straight_0" type="mix" begin="0" end="300" route="r_east_straight" vehsPerHour="661.4488" departLane="best" departSpeed="random"/>
   <flow id="f_1_east_in_far_left_0" type="mix" begin="0" end="300" route="r_east_left" vehsPerHour="440.9659" departLane="best" departSpeed="random"/>
   <flow id="f_2_east_in_far_right_0" type="mix" begin="0" end="300" route="r_east_right" vehsPerHour="220.4829" departLane="best" departSpeed="random"/>
@@ -34,14 +32,6 @@
   <flow id="f_9_south_in_far_straight_0" type="mix" begin="0" end="300" route="r_south_straight" vehsPerHour="347.351" departLane="best" departSpeed="random"/>
   <flow id="f_10_south_in_far_left_0" type="mix" begin="0" end="300" route="r_south_left" vehsPerHour="224.0974" departLane="best" departSpeed="random"/>
   <flow id="f_11_south_in_far_right_0" type="mix" begin="0" end="300" route="r_south_right" vehsPerHour="112.0487" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_0" type="bus" route="bus_line1_route" depart="60" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_1" type="bus" route="bus_line1_route" depart="240" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_12_east_in_far_straight_300" type="mix" begin="300" end="600" route="r_east_straight" vehsPerHour="507.4742" departLane="best" departSpeed="random"/>
   <flow id="f_13_east_in_far_left_300" type="mix" begin="300" end="600" route="r_east_left" vehsPerHour="338.3161" departLane="best" departSpeed="random"/>
   <flow id="f_14_east_in_far_right_300" type="mix" begin="300" end="600" route="r_east_right" vehsPerHour="169.1581" departLane="best" departSpeed="random"/>
@@ -54,10 +44,6 @@
   <flow id="f_21_south_in_far_straight_300" type="mix" begin="300" end="600" route="r_south_straight" vehsPerHour="266.4933" departLane="best" departSpeed="random"/>
   <flow id="f_22_south_in_far_left_300" type="mix" begin="300" end="600" route="r_south_left" vehsPerHour="171.9311" departLane="best" departSpeed="random"/>
   <flow id="f_23_south_in_far_right_300" type="mix" begin="300" end="600" route="r_south_right" vehsPerHour="85.9656" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_2" type="bus" route="bus_line1_route" depart="420" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_24_east_in_far_straight_600" type="mix" begin="600" end="900" route="r_east_straight" vehsPerHour="570.1296" departLane="best" departSpeed="random"/>
   <flow id="f_25_east_in_far_left_600" type="mix" begin="600" end="900" route="r_east_left" vehsPerHour="380.0864" departLane="best" departSpeed="random"/>
   <flow id="f_26_east_in_far_right_600" type="mix" begin="600" end="900" route="r_east_right" vehsPerHour="190.0432" departLane="best" departSpeed="random"/>
@@ -70,14 +56,6 @@
   <flow id="f_33_south_in_far_straight_600" type="mix" begin="600" end="900" route="r_south_straight" vehsPerHour="299.3959" departLane="best" departSpeed="random"/>
   <flow id="f_34_south_in_far_left_600" type="mix" begin="600" end="900" route="r_south_left" vehsPerHour="193.1587" departLane="best" departSpeed="random"/>
   <flow id="f_35_south_in_far_right_600" type="mix" begin="600" end="900" route="r_south_right" vehsPerHour="96.5793" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_3" type="bus" route="bus_line1_route" depart="600" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_4" type="bus" route="bus_line1_route" depart="780" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_36_east_in_far_straight_900" type="mix" begin="900" end="1200" route="r_east_straight" vehsPerHour="557.1437" departLane="best" departSpeed="random"/>
   <flow id="f_37_east_in_far_left_900" type="mix" begin="900" end="1200" route="r_east_left" vehsPerHour="371.4291" departLane="best" departSpeed="random"/>
   <flow id="f_38_east_in_far_right_900" type="mix" begin="900" end="1200" route="r_east_right" vehsPerHour="185.7146" departLane="best" departSpeed="random"/>
@@ -90,14 +68,6 @@
   <flow id="f_45_south_in_far_straight_900" type="mix" begin="900" end="1200" route="r_south_straight" vehsPerHour="292.5766" departLane="best" departSpeed="random"/>
   <flow id="f_46_south_in_far_left_900" type="mix" begin="900" end="1200" route="r_south_left" vehsPerHour="188.7591" departLane="best" departSpeed="random"/>
   <flow id="f_47_south_in_far_right_900" type="mix" begin="900" end="1200" route="r_south_right" vehsPerHour="94.3795" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_5" type="bus" route="bus_line1_route" depart="960" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_6" type="bus" route="bus_line1_route" depart="1140" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_48_east_in_far_straight_1200" type="mix" begin="1200" end="1500" route="r_east_straight" vehsPerHour="685.7684" departLane="best" departSpeed="random"/>
   <flow id="f_49_east_in_far_left_1200" type="mix" begin="1200" end="1500" route="r_east_left" vehsPerHour="457.179" departLane="best" departSpeed="random"/>
   <flow id="f_50_east_in_far_right_1200" type="mix" begin="1200" end="1500" route="r_east_right" vehsPerHour="228.5895" departLane="best" departSpeed="random"/>
@@ -110,10 +80,6 @@
   <flow id="f_57_south_in_far_straight_1200" type="mix" begin="1200" end="1500" route="r_south_straight" vehsPerHour="360.1221" departLane="best" departSpeed="random"/>
   <flow id="f_58_south_in_far_left_1200" type="mix" begin="1200" end="1500" route="r_south_left" vehsPerHour="232.3368" departLane="best" departSpeed="random"/>
   <flow id="f_59_south_in_far_right_1200" type="mix" begin="1200" end="1500" route="r_south_right" vehsPerHour="116.1684" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_7" type="bus" route="bus_line1_route" depart="1320" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_60_east_in_far_straight_1500" type="mix" begin="1500" end="1800" route="r_east_straight" vehsPerHour="670.7894" departLane="best" departSpeed="random"/>
   <flow id="f_61_east_in_far_left_1500" type="mix" begin="1500" end="1800" route="r_east_left" vehsPerHour="447.193" departLane="best" departSpeed="random"/>
   <flow id="f_62_east_in_far_right_1500" type="mix" begin="1500" end="1800" route="r_east_right" vehsPerHour="223.5965" departLane="best" departSpeed="random"/>
@@ -126,14 +92,6 @@
   <flow id="f_69_south_in_far_straight_1500" type="mix" begin="1500" end="1800" route="r_south_straight" vehsPerHour="352.2561" departLane="best" departSpeed="random"/>
   <flow id="f_70_south_in_far_left_1500" type="mix" begin="1500" end="1800" route="r_south_left" vehsPerHour="227.262" departLane="best" departSpeed="random"/>
   <flow id="f_71_south_in_far_right_1500" type="mix" begin="1500" end="1800" route="r_south_right" vehsPerHour="113.631" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_8" type="bus" route="bus_line1_route" depart="1500" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_9" type="bus" route="bus_line1_route" depart="1680" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_72_east_in_far_straight_1800" type="mix" begin="1800" end="2100" route="r_east_straight" vehsPerHour="724.7894" departLane="best" departSpeed="random"/>
   <flow id="f_73_east_in_far_left_1800" type="mix" begin="1800" end="2100" route="r_east_left" vehsPerHour="483.193" departLane="best" departSpeed="random"/>
   <flow id="f_74_east_in_far_right_1800" type="mix" begin="1800" end="2100" route="r_east_right" vehsPerHour="241.5965" departLane="best" departSpeed="random"/>
@@ -146,14 +104,6 @@
   <flow id="f_81_south_in_far_straight_1800" type="mix" begin="1800" end="2100" route="r_south_straight" vehsPerHour="380.6135" departLane="best" departSpeed="random"/>
   <flow id="f_82_south_in_far_left_1800" type="mix" begin="1800" end="2100" route="r_south_left" vehsPerHour="245.5571" departLane="best" departSpeed="random"/>
   <flow id="f_83_south_in_far_right_1800" type="mix" begin="1800" end="2100" route="r_south_right" vehsPerHour="122.7785" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_10" type="bus" route="bus_line1_route" depart="1860" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_11" type="bus" route="bus_line1_route" depart="2040" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_84_east_in_far_straight_2100" type="mix" begin="2100" end="2400" route="r_east_straight" vehsPerHour="522.9935" departLane="best" departSpeed="random"/>
   <flow id="f_85_east_in_far_left_2100" type="mix" begin="2100" end="2400" route="r_east_left" vehsPerHour="348.6624" departLane="best" departSpeed="random"/>
   <flow id="f_86_east_in_far_right_2100" type="mix" begin="2100" end="2400" route="r_east_right" vehsPerHour="174.3312" departLane="best" departSpeed="random"/>
@@ -166,10 +116,6 @@
   <flow id="f_93_south_in_far_straight_2100" type="mix" begin="2100" end="2400" route="r_south_straight" vehsPerHour="274.6431" departLane="best" departSpeed="random"/>
   <flow id="f_94_south_in_far_left_2100" type="mix" begin="2100" end="2400" route="r_south_left" vehsPerHour="177.1891" departLane="best" departSpeed="random"/>
   <flow id="f_95_south_in_far_right_2100" type="mix" begin="2100" end="2400" route="r_south_right" vehsPerHour="88.5945" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_12" type="bus" route="bus_line1_route" depart="2220" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_96_east_in_far_straight_2400" type="mix" begin="2400" end="2700" route="r_east_straight" vehsPerHour="606.9413" departLane="best" departSpeed="random"/>
   <flow id="f_97_east_in_far_left_2400" type="mix" begin="2400" end="2700" route="r_east_left" vehsPerHour="404.6276" departLane="best" departSpeed="random"/>
   <flow id="f_98_east_in_far_right_2400" type="mix" begin="2400" end="2700" route="r_east_right" vehsPerHour="202.3138" departLane="best" departSpeed="random"/>
@@ -182,14 +128,6 @@
   <flow id="f_105_south_in_far_straight_2400" type="mix" begin="2400" end="2700" route="r_south_straight" vehsPerHour="318.7271" departLane="best" departSpeed="random"/>
   <flow id="f_106_south_in_far_left_2400" type="mix" begin="2400" end="2700" route="r_south_left" vehsPerHour="205.6304" departLane="best" departSpeed="random"/>
   <flow id="f_107_south_in_far_right_2400" type="mix" begin="2400" end="2700" route="r_south_right" vehsPerHour="102.8152" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_13" type="bus" route="bus_line1_route" depart="2400" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_14" type="bus" route="bus_line1_route" depart="2580" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_108_east_in_far_straight_2700" type="mix" begin="2700" end="3000" route="r_east_straight" vehsPerHour="508.6737" departLane="best" departSpeed="random"/>
   <flow id="f_109_east_in_far_left_2700" type="mix" begin="2700" end="3000" route="r_east_left" vehsPerHour="339.1158" departLane="best" departSpeed="random"/>
   <flow id="f_110_east_in_far_right_2700" type="mix" begin="2700" end="3000" route="r_east_right" vehsPerHour="169.5579" departLane="best" departSpeed="random"/>
@@ -202,14 +140,6 @@
   <flow id="f_117_south_in_far_straight_2700" type="mix" begin="2700" end="3000" route="r_south_straight" vehsPerHour="267.1232" departLane="best" departSpeed="random"/>
   <flow id="f_118_south_in_far_left_2700" type="mix" begin="2700" end="3000" route="r_south_left" vehsPerHour="172.3375" departLane="best" departSpeed="random"/>
   <flow id="f_119_south_in_far_right_2700" type="mix" begin="2700" end="3000" route="r_south_right" vehsPerHour="86.1688" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_15" type="bus" route="bus_line1_route" depart="2760" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
-  <vehicle id="bus_line1_16" type="bus" route="bus_line1_route" depart="2940" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_120_east_in_far_straight_3000" type="mix" begin="3000" end="3300" route="r_east_straight" vehsPerHour="555.9978" departLane="best" departSpeed="random"/>
   <flow id="f_121_east_in_far_left_3000" type="mix" begin="3000" end="3300" route="r_east_left" vehsPerHour="370.6652" departLane="best" departSpeed="random"/>
   <flow id="f_122_east_in_far_right_3000" type="mix" begin="3000" end="3300" route="r_east_right" vehsPerHour="185.3326" departLane="best" departSpeed="random"/>
@@ -222,10 +152,6 @@
   <flow id="f_129_south_in_far_straight_3000" type="mix" begin="3000" end="3300" route="r_south_straight" vehsPerHour="291.9748" departLane="best" departSpeed="random"/>
   <flow id="f_130_south_in_far_left_3000" type="mix" begin="3000" end="3300" route="r_south_left" vehsPerHour="188.3708" departLane="best" departSpeed="random"/>
   <flow id="f_131_south_in_far_right_3000" type="mix" begin="3000" end="3300" route="r_south_right" vehsPerHour="94.1854" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_17" type="bus" route="bus_line1_route" depart="3120" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
   <flow id="f_132_east_in_far_straight_3300" type="mix" begin="3300" end="3600" route="r_east_straight" vehsPerHour="627.85" departLane="best" departSpeed="random"/>
   <flow id="f_133_east_in_far_left_3300" type="mix" begin="3300" end="3600" route="r_east_left" vehsPerHour="418.5667" departLane="best" departSpeed="random"/>
   <flow id="f_134_east_in_far_right_3300" type="mix" begin="3300" end="3600" route="r_east_right" vehsPerHour="209.2833" departLane="best" departSpeed="random"/>
@@ -238,8 +164,4 @@
   <flow id="f_141_south_in_far_straight_3300" type="mix" begin="3300" end="3600" route="r_south_straight" vehsPerHour="329.707" departLane="best" departSpeed="random"/>
   <flow id="f_142_south_in_far_left_3300" type="mix" begin="3300" end="3600" route="r_south_left" vehsPerHour="212.7142" departLane="best" departSpeed="random"/>
   <flow id="f_143_south_in_far_right_3300" type="mix" begin="3300" end="3600" route="r_south_right" vehsPerHour="106.3571" departLane="best" departSpeed="random"/>
-  <vehicle id="bus_line1_18" type="bus" route="bus_line1_route" depart="3300" departSpeed="0">
-    <stop busStop="bus_line1_stop_0" duration="30"/>
-    <stop busStop="bus_line1_stop_1" duration="30"/>
-  </vehicle>
 </routes>

@@ -14,7 +14,6 @@ def inject_tl_into_net():
 
     # 信号配时参数
     signal = config["signal_timing"]
-    green_cav = signal["green_cav"]
     green_ew_straight = signal["green_ew_straight"]
     green_ns_straight = signal["green_ns_straight"]
     green_ew_left = signal["green_ew_left"]
@@ -43,7 +42,7 @@ def inject_tl_into_net():
                 idx = int(idx_str)
             except ValueError:
                 continue
-            connections.append((idx, conn.get("from"), conn.get("to"), conn.get("dir"), conn.get("allow")))
+            connections.append((idx, conn.get("from"), conn.get("to"), conn.get("dir")))
             max_index = max(max_index, idx)
 
     if not connections:
@@ -56,26 +55,23 @@ def inject_tl_into_net():
     left_map = {"east_in": "north_out", "west_in": "south_out", "north_in": "east_out", "south_in": "west_out"}
     right_map = {"east_in": "south_out", "west_in": "north_out", "north_in": "west_out", "south_in": "east_out"}
 
-    cav = set()
     ew_straight = set()
     ew_left = set()
     ns_straight = set()
     ns_left = set()
     right_turns = set()
 
-    for idx, frm, to, d, allow in connections:
-        # if allow == "taxi":
-        #     cav.add(idx)
-        #     continue
-        # if d not in ('r', 's', 'l'):
-        #     if straight_map.get(frm) == to:
-        #         d = 's'
-        #     elif left_map.get(frm) == to:
-        #         d = 'l'
-        #     elif right_map.get(frm) == to:
-        #         d = 'r'
-        #     else:
-        #         continue
+    for idx, frm, to, d in connections:
+        if d not in ('r', 's', 'l'):
+            if straight_map.get(frm) == to:
+                d = 's'
+            elif left_map.get(frm) == to:
+                d = 'l'
+            elif right_map.get(frm) == to:
+                d = 'r'
+            else:
+                continue
+
         if d == 'r':
             right_turns.add(idx)
         elif d == 's':
@@ -91,7 +87,6 @@ def inject_tl_into_net():
 
     total = max_index + 1
     print(f"[DEBUG] total links = {total}")
-    print(f"[DEBUG] CAV专用: {sorted(cav)}")
     print(f"[DEBUG] 右转: {sorted(right_turns)}")
     print(f"[DEBUG] EW直行: {sorted(ew_straight)}, EW左转: {sorted(ew_left)}")
     print(f"[DEBUG] NS直行: {sorted(ns_straight)}, NS左转: {sorted(ns_left)}")
@@ -115,18 +110,12 @@ def inject_tl_into_net():
     new_tl = ET.Element("tlLogic", {
         "id": tl_id,
         "type": "actuated",
-        "programID": "CAV",
+        "programID": "BUS",
         "offset": "0"
     })
 
     # === 相位配置：绿灯→黄灯→全红，依次循环 ===
     phase_config = [
-        # taxi专用相位
-        # taxi专用相位
-        # (cav, green_cav, 'green', True, min_green_straight, max_green_straight),
-        # (cav, yellow_time, 'yellow', False, None, None),
-        # (set(), all_red_time, 'all_red', False, None, None),
-
         # 东西向直行：绿灯 → 黄灯 → 全红
         (ew_straight, green_ew_straight, 'green', True, min_green_straight, max_green_straight),
         (ew_straight, yellow_time, 'yellow', False, None, None),

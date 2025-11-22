@@ -3,7 +3,7 @@
   <input>
     <net-file value="test/crossroad.net.xml"/>
     <route-files value="test/traffic.rou.xml"/>
-    <additional-files value="test/traffic_light.add.xml, test/bus_stops.add.xml"/>
+    <additional-files value="test/traffic_light.add.xml"/>
   </input>
 
   <time>

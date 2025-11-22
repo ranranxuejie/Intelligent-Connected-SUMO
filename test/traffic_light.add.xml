@@ -1,11 +1,11 @@
 <?xml version="1.0" ?>
 <additional>
-  <tlLogic id="center" type="actuated" programID="BUS" offset="0">
-    <phase duration="32" state="grrrgGGGrrgrrrgGGGrr" minDur="20" maxDur="60"/>
-    <phase duration="3" state="grrrgyyyrrgrrrgyyyrr"/>
+  <tlLogic id="center" type="actuated" programID="CAV" offset="0">
+    <phase duration="32" state="grrrgGGGrrgrrrgGGGGr" minDur="20" maxDur="60"/>
+    <phase duration="3" state="grrrgyyyrrgrrrgyyyyr"/>
     <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
-    <phase duration="35" state="grrrgrrrGGgrrrgrrrGG" minDur="20" maxDur="60"/>
-    <phase duration="3" state="grrrgrrryygrrrgrrryy"/>
+    <phase duration="35" state="grrrgrrrGGgrrrgrrrrG" minDur="20" maxDur="60"/>
+    <phase duration="3" state="grrrgrrryygrrrgrrrry"/>
     <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
     <phase duration="35" state="gGGrgrrrrrgGGrgrrrrr" minDur="20" maxDur="60"/>
     <phase duration="3" state="gyyrgrrrrrgyyrgrrrrr"/>

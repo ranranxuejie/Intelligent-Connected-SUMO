@@ -97,8 +97,6 @@ def write_edges(path=EDGES_FILE):
             numLanes=str(total_lanes), speed=str(speed_ms)
         )
         if base_key and base_key in LANE_FUNCTIONS:
-            if 'c' in func_str:
-                have_cav = True
             # 3. 按功能字符串逐车道生成属性（外侧到内侧，对应字符串索引0到n-1）
             for lane_idx, func in enumerate(func_str):
                 lane_attrs = {
@@ -112,12 +110,7 @@ def write_edges(path=EDGES_FILE):
                     lane_attrs["allow"] = "bus"  # 仅允许公交
                 # else:
                 #     lane_attrs["disallow"] = "bus"  # 禁止公交（非公交道）
-                elif (func == 'c')&('far' not in edge_id):
-                    lane_attrs["allow"] = "taxi"  # 禁止其他任何车辆
-                elif (func == 's')&('far' not in edge_id):
-                    lane_attrs["disallow"] = "taxi"  # 禁止CAV（非CAV道）
-                # else:
-                #     lane_attrs["disallow"] = "cav"  # 禁止CAV（非CAV道）
+
                 # 3.2 设置近段禁变道（保持原有逻辑）
                 if edge_id.endswith("_in"):
                     lane_attrs["changeLeft"] = "emergency"
@@ -160,35 +153,29 @@ def write_connections(path=CONN_FILE):
         to_s = straight_map[in_edge]  # 直行去向
         to_r = right_map[in_edge]    # 右转去向
         to_l = left_map[in_edge]     # 左转去向
-        straight_func = ['s', 't', 'u','b','c']
-        left_func = ['l','u']
-        right_func = ['r','t']
+
         # 逐车道解析功能，生成转向连接
 
         # 计算['s', 't', 'u']的数量（直行车道数）
-        straight_count = sum([func_str.count(i) for i in straight_func])
-        left_count = sum([func_str.count(i) for i in left_func])
+        straight_count = func_str.count('s') + func_str.count('t') + func_str.count('u')+func_str.count('b')
+        left_count = func_str.count('l') + func_str.count('u')
         for lane_idx, func in enumerate(func_str):
             # 普通车道：按功能生成转向
-            allow = "taxi" if func == 'c' else None
+            allow = None  # 非公交道不限制车辆类型（除bus已在edges中禁止）
             # 右转功能（r/t）：连出口最右车道（0）
-            if func in right_func:
+            if func in ['r', 't']:
                 add_conn(in_edge, lane_idx, to_r, "0", allow)
             # 左转功能（l/u）：连出口最左车道（n_out_l-1）
-            if func in left_func:
+            if func in ['l', 'u']:
                 left_count-=1
                 left_target = str(out_counts[to_l] - 1 - left_count)
-                if int(left_target) < 0:
-                    left_target = "0"
                 add_conn(in_edge, lane_idx, to_l, left_target, allow)
-
             # 直行功能（s/t/u）：连出口对应车道（按出口车道数分配）
-            if func in straight_func:
+            if func in ['b','s', 't', 'u']:
                 straight_count -= 1
                 # 直行车道按从左到右，对应出口从左到右（如出口3车道：2→1→0）
-                straight_target = str(out_counts[to_s] - 1 - straight_count)
-
-                add_conn(in_edge, lane_idx, to_s, straight_target, allow)
+                out_lane = str(out_counts[to_s] - 1 - straight_count)
+                add_conn(in_edge, lane_idx, to_s, out_lane, allow)
 
     # 处理远段到近段的连接（简化：远段车道按索引对应近段车道，非公交道禁止bus）
     for in_edge in ["east_in", "west_in", "north_in", "south_in"]:

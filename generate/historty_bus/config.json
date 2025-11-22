@@ -18,8 +18,8 @@
     "south_out": 2
   },
   "LANE_FUNCTIONS": {
-    "east_in": "rsscll",
-    "west_in": "tsscl",
+    "east_in": "rbssll",
+    "west_in": "tssll",
     "north_in": "tsl",
     "south_in": "tsl"
   },
@@ -36,14 +36,24 @@
     "south_in_far": [3.1, 2, 1]
   },
   "vehicle_type_ratios": {
-    "private": 0.70,
+    "private": 0.85,
     "truck": 0.10,
-    "taxi": 0.20
+    "taxi": 0.05
   },
   "bus_lines": [
+    {
+      "id": "bus_line1",
+      "route_edges": ["east_in_far", "east_in", "west_out"],
+      "stops": [
+        {"edge": "east_in_far", "position": 100, "duration": 30},
+        {"edge": "west_out", "position": 100, "duration": 30}
+      ],
+      "depart_interval": 180,
+      "start_time": 60,
+      "end_time": 3420
+    }
   ],
   "signal_timing": {
-    "green_cav": 20,
     "green_ew_straight": 32,
     "green_ns_straight": 35,
     "green_ew_left": 35,
