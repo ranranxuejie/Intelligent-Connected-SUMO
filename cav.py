@@ -138,7 +138,7 @@ except:
     pass
 set_veh_list=[]
 nolonger_set_veh_list=[]
-traci.start(["sumo", "-c", "crossroad_simulation.sumocfg",
+traci.start([f"sumo{'-gui'*USE_GUI}", "-c", "crossroad_simulation.sumocfg",
              "--tripinfo-output",f"{OUTPUT_FOLDER}tripinfo.xml",
              # "--queue-output",f"{OUTPUT_FOLDER}queue.xml",
              # 2. Emission: 包含每一秒的油耗、CO2、NOx排放

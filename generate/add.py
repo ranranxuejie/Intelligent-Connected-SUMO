@@ -114,7 +114,7 @@ def inject_tl_into_net():
     # === 构建 tlLogic（新增全红相位）===
     new_tl = ET.Element("tlLogic", {
         "id": tl_id,
-        "type": "actuated",
+        "type": "static",
         "programID": "CAV",
         "offset": "0"
     })
