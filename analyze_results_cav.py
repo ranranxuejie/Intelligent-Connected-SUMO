@@ -266,9 +266,9 @@ def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
     print(f"准备绘图，共 {len(plot_trajectories)} 条轨迹...")
 
     # ================= 第三步：双子图绘制 =================
-    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(14, 12), sharey=True)
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(14, 12),dpi=300, sharey=True)
 
-    cmap = plt.get_cmap('turbo')
+    cmap = plt.get_cmap('RdYlGn')
     norm = colors.Normalize(vmin=0, vmax=20)
     sc_mappable = None
     TIME_SPLIT = 1800
@@ -315,6 +315,21 @@ def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
         cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
         fig.colorbar(sc_mappable, cax=cbar_ax, label='速度 (m/s)')
 
+    # 根据test_name确定是Normal还是CAV First模式，并提取速度值
+    if test_name == 'normal':
+        mode_title = 'Normal'
+        vmin_text = ''
+    else:
+        mode_title = 'CAV First'
+        # 从文件夹名称中提取速度值，例如 cav_first_4.17 -> 4.17 m/s
+        try:
+            vmin_value = float(test_name.split('_')[-1])
+            vmin_text = f' (Vmin={vmin_value:.2f} m/s)'
+        except:
+            vmin_text = ''
+
+    # 添加大标题显示模式和速度信息
+    fig.suptitle(f'{mode_title}{vmin_text}', fontsize=20, fontweight='bold')
 
     save_path = f'results/{test_name}_{in_dir}.png'
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -322,7 +337,7 @@ def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
     plt.show()
 
 
-for MIN_SPEED in [0, 15 / 3.6, 20 / 3.6, 25 / 3.6]:
+for MIN_SPEED in [0, 15 / 3.6, 20 / 3.6, 25 / 3.6, 30 / 3.6]:
     if MIN_SPEED == 0:
         out_folder = 'normal'
     else:

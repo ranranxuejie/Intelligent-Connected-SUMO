@@ -118,7 +118,7 @@ def get_all_cav_loc(ID_list):
 
 USE_GUI = False
 # for MIN_SPEED in [0,15/3.6,20/3.6,25/3.6]:
-MIN_SPEED = [0,15/3.6,20/3.6,25/3.6][3]
+MIN_SPEED = [0,15/3.6,20/3.6,25/3.6,30/3.6][0]
 
 if MIN_SPEED==0:
     CAV_FIRST = False
@@ -149,7 +149,7 @@ traci.start([f"sumo{'-gui'*USE_GUI}", "-c", "crossroad_simulation.sumocfg",
 MAX_SPEED = traci.lane.getMaxSpeed('east_in_3')
 MAX_ACCLERATION = traci.vehicletype.getDecel('taxi')
 MIN_ACCLERATION = MAX_ACCLERATION/3
-simu_speed = 0 # 最大仿真倍速
+simu_speed = 10*USE_GUI # 最大仿真倍速
 if USE_GUI:
     view_id = "View #0"  # 对应默认视图ID
     traci.gui.setZoom(view_id, 800)
@@ -157,7 +157,7 @@ if USE_GUI:
 
 
 time_per_step = 0.1/simu_speed if simu_speed>0 else 0.1
-t0 = time.time()
+
 # time.sleep(10) # 准备录屏
 # while traci.simulation.getMinExpectedNumber() > 0:
 
@@ -167,10 +167,16 @@ phase_duration = [tls_program[i].duration for i in range(len(tls_program))]
 pbar = tqdm(total=37250)
 # for i in range(1000):
 i = 0
+t0 = time.time()
 while traci.simulation.getMinExpectedNumber() > 0:
     i += 1
     pbar.update(1)
     traci.simulationStep()
+    # 控制仿真速度
+    if simu_speed>0:
+        time.sleep(max(0, time_per_step - (time.time() - t0)))
+        t0 = time.time()
+
     if not CAV_FIRST:
         continue
     # 获取车辆要等的信号灯相位编号
@@ -186,8 +192,5 @@ while traci.simulation.getMinExpectedNumber() > 0:
             set_cav_route(veh_id)
         clear_set_route(ID_list)
 
-        # 控制仿真速度
-        # if simu_speed>0:
-        #     time.sleep(max(0, time_per_step - (time.time() - t0)))
-        #     t0 = time.time()
+
 # traci.close(wait=False)
