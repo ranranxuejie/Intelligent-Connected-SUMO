@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <edges>
-  <edge id="east_in_far" from="east_end" to="east_mid" numLanes="6" speed="16.67">
+  <edge id="east_in_far" from="east_in_start" to="east_mid" numLanes="6" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
@@ -16,7 +16,7 @@
     <lane index="4" speed="16.67" width="3.5" changeLeft="emergency" changeRight="emergency"/>
     <lane index="5" speed="16.67" width="3.5" changeLeft="emergency" changeRight="emergency"/>
   </edge>
-  <edge id="west_in_far" from="west_end" to="west_mid" numLanes="5" speed="16.67">
+  <edge id="west_in_far" from="west_in_start" to="west_mid" numLanes="5" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
@@ -30,7 +30,7 @@
     <lane index="3" speed="16.67" width="3.5" allow="taxi" changeLeft="emergency" changeRight="emergency"/>
     <lane index="4" speed="16.67" width="3.5" changeLeft="emergency" changeRight="emergency"/>
   </edge>
-  <edge id="north_in_far" from="north_end" to="north_mid" numLanes="3" speed="16.67">
+  <edge id="north_in_far" from="north_in_start" to="north_mid" numLanes="3" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
@@ -40,7 +40,7 @@
     <lane index="1" speed="16.67" width="3.5" disallow="taxi" changeLeft="emergency" changeRight="emergency"/>
     <lane index="2" speed="16.67" width="3.5" changeLeft="emergency" changeRight="emergency"/>
   </edge>
-  <edge id="south_in_far" from="south_end" to="south_mid" numLanes="3" speed="16.67">
+  <edge id="south_in_far" from="south_in_start" to="south_mid" numLanes="3" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
@@ -50,23 +50,23 @@
     <lane index="1" speed="16.67" width="3.5" disallow="taxi" changeLeft="emergency" changeRight="emergency"/>
     <lane index="2" speed="16.67" width="3.5" changeLeft="emergency" changeRight="emergency"/>
   </edge>
-  <edge id="east_out" from="center" to="east_end" numLanes="4" speed="16.67">
+  <edge id="east_out" from="center" to="east_out_end" numLanes="4" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
     <lane index="3" speed="16.67" width="3.5"/>
   </edge>
-  <edge id="west_out" from="center" to="west_end" numLanes="4" speed="16.67">
+  <edge id="west_out" from="center" to="west_out_end" numLanes="4" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
     <lane index="2" speed="16.67" width="3.5"/>
     <lane index="3" speed="16.67" width="3.5"/>
   </edge>
-  <edge id="north_out" from="center" to="north_end" numLanes="2" speed="16.67">
+  <edge id="north_out" from="center" to="north_out_end" numLanes="2" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
   </edge>
-  <edge id="south_out" from="center" to="south_end" numLanes="2" speed="16.67">
+  <edge id="south_out" from="center" to="south_out_end" numLanes="2" speed="16.67">
     <lane index="0" speed="16.67" width="3.5"/>
     <lane index="1" speed="16.67" width="3.5"/>
   </edge>

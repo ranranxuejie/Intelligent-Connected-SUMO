@@ -6,7 +6,8 @@
   "center_x": 0,
   "center_y": 0,
   "road_length": 500,
-  "bus_only_length": 200,
+  "bus_only_length": 400,
+  "outlet_length": 200,
   "speed_kmh": 60,
   "bus_lane_width": 3.5,
   "normal_lane_width": 3.5,
@@ -19,7 +20,7 @@
   },
   "LANE_FUNCTIONS": {
     "east_in": "rsscll",
-    "west_in": "tsscl",
+    "west_in": "rsscl",
     "north_in": "tsl",
     "south_in": "tsl"
   },
@@ -36,9 +37,9 @@
     "south_in_far": [3.1, 2, 1]
   },
   "vehicle_type_ratios": {
-    "private": 0.70,
+    "private": 0.40,
     "truck": 0.10,
-    "taxi": 0.20
+    "taxi": 0.50
   },
   "bus_lines": [
   ],

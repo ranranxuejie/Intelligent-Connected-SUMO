@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
+No_turn_edges_id = ['east_out_4', 'west_out_4']
 import os
 import shutil
 import subprocess
@@ -17,7 +17,8 @@ with open("./generate/config.json", "r", encoding="utf-8") as f:
 # 重建变量
 center_x = config["center_x"]
 center_y = config["center_y"]
-road_length = config["road_length"]
+road_length = config["road_length"]       # 进口道总长度
+outlet_length = config.get("outlet_length", 200) # 出口道长度 (默认200，防止配置缺失报错)
 bus_only_length = config["bus_only_length"]
 speed_kmh = config["speed_kmh"]
 speed_ms = round(speed_kmh / 3.6, 2)
@@ -43,22 +44,36 @@ def prettify(elem):
     xml_bytes = ET.tostring(elem, encoding="utf-8")
     return minidom.parseString(xml_bytes).toprettyxml(indent="  ", encoding="utf-8")
 
+# -------------------------- 修改部分 2：write_nodes --------------------------
 def write_nodes(path=NODES_FILE):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     nodes = ET.Element("nodes")
 
-    # 中心与端点
-    ET.SubElement(nodes, "node", id="center", x=str(center_x), y=str(center_y), type="traffic_light")
-    ET.SubElement(nodes, "node", id="east_end",  x=str(center_x + road_length), y=str(center_y), type="priority")
-    ET.SubElement(nodes, "node", id="west_end",  x=str(center_x - road_length), y=str(center_y), type="priority")
-    ET.SubElement(nodes, "node", id="north_end", x=str(center_x), y=str(center_y + road_length), type="priority")
-    ET.SubElement(nodes, "node", id="south_end", x=str(center_x), y=str(center_y - road_length), type="priority")
+    # 定义南北向的管控长度（保留你之前的需求：东西向的一半）
+    ns_bus_only_length = bus_only_length / 4
 
-    # 中间节点（距中心 bus_only_length 处），用于把进口拆成远段和近段
+    # 中心节点
+    ET.SubElement(nodes, "node", id="center", x=str(center_x), y=str(center_y), type="traffic_light")
+    
+    # --- 进口道起点节点 (使用 road_length) ---
+    # 这些是车辆生成的地方，保持较长距离
+    ET.SubElement(nodes, "node", id="east_in_start",  x=str(center_x + road_length), y=str(center_y), type="priority")
+    ET.SubElement(nodes, "node", id="west_in_start",  x=str(center_x - road_length), y=str(center_y), type="priority")
+    ET.SubElement(nodes, "node", id="north_in_start", x=str(center_x), y=str(center_y + road_length), type="priority")
+    ET.SubElement(nodes, "node", id="south_in_start", x=str(center_x), y=str(center_y - road_length), type="priority")
+
+    # --- 出口道终点节点 (新增！使用 outlet_length) ---
+    # 这些是车辆离开的地方，距离较短（200m）
+    ET.SubElement(nodes, "node", id="east_out_end",  x=str(center_x + outlet_length), y=str(center_y), type="priority")
+    ET.SubElement(nodes, "node", id="west_out_end",  x=str(center_x - outlet_length), y=str(center_y), type="priority")
+    ET.SubElement(nodes, "node", id="north_out_end", x=str(center_x), y=str(center_y + outlet_length), type="priority")
+    ET.SubElement(nodes, "node", id="south_out_end", x=str(center_x), y=str(center_y - outlet_length), type="priority")
+
+    # 中间节点 (保持不变)
     ET.SubElement(nodes, "node", id="east_mid",  x=str(center_x + bus_only_length),  y=str(center_y), type="priority")
     ET.SubElement(nodes, "node", id="west_mid",  x=str(center_x - bus_only_length),  y=str(center_y), type="priority")
-    ET.SubElement(nodes, "node", id="north_mid", x=str(center_x), y=str(center_y + bus_only_length), type="priority")
-    ET.SubElement(nodes, "node", id="south_mid", x=str(center_x), y=str(center_y - bus_only_length), type="priority")
+    ET.SubElement(nodes, "node", id="north_mid", x=str(center_x), y=str(center_y + ns_bus_only_length), type="priority")
+    ET.SubElement(nodes, "node", id="south_mid", x=str(center_x), y=str(center_y - ns_bus_only_length), type="priority")
 
     with open(path, "wb") as f:
         f.write(prettify(nodes))
@@ -67,19 +82,26 @@ def write_nodes(path=NODES_FILE):
 def write_edges(path=EDGES_FILE):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     edges = ET.Element("edges")
+    
+    # 修改说明：
+    # 1. 进口道远段 (xxx_in_far) 的起点改为 xxx_in_start
+    # 2. 出口道 (xxx_out) 的终点改为 xxx_out_end
     edge_defs = [
-        ("east_in_far",  "east_end",  "east_mid",  True,  "east_in"),
-        ("east_in",      "east_mid",  "center",    True,  "east_in"),
-        ("west_in_far",  "west_end",  "west_mid",  True,  "west_in"),
-        ("west_in",      "west_mid",  "center",    True,  "west_in"),
-        ("north_in_far", "north_end", "north_mid", True,  "north_in"),
-        ("north_in",     "north_mid", "center",    True,  "north_in"),
-        ("south_in_far", "south_end", "south_mid", True,  "south_in"),
-        ("south_in",     "south_mid", "center",    True,  "south_in"),
-        ("east_out",     "center",    "east_end",  False, "east_out"),
-        ("west_out",     "center",    "west_end",  False, "west_out"),
-        ("north_out",    "center",    "north_end", False, "north_out"),
-        ("south_out",    "center",    "south_end", False, "south_out"),
+        # 进口道 (From StartNode To MidNode)
+        ("east_in_far",  "east_in_start",   "east_mid",  True,  "east_in"),
+        ("east_in",      "east_mid",        "center",    True,  "east_in"),
+        ("west_in_far",  "west_in_start",   "west_mid",  True,  "west_in"),
+        ("west_in",      "west_mid",        "center",    True,  "west_in"),
+        ("north_in_far", "north_in_start",  "north_mid", True,  "north_in"),
+        ("north_in",     "north_mid",       "center",    True,  "north_in"),
+        ("south_in_far", "south_in_start",  "south_mid", True,  "south_in"),
+        ("south_in",     "south_mid",       "center",    True,  "south_in"),
+        
+        # 出口道 (From Center To EndNode) - 这里使用了新的终点节点
+        ("east_out",     "center",    "east_out_end",  False, "east_out"),
+        ("west_out",     "center",    "west_out_end",  False, "west_out"),
+        ("north_out",    "center",    "north_out_end", False, "north_out"),
+        ("south_out",    "center",    "south_out_end", False, "south_out"),
     ]
 
     for edge_id, frm, to, is_in, base_key in edge_defs:
@@ -90,7 +112,7 @@ def write_edges(path=EDGES_FILE):
         else:
             # 出口道/远段：用原有LANES配置（若需自定义出口道，可新增出口功能字典）
             total_lanes = int(LANES[edge_id])
-
+        
         # 2. 创建道路节点
         e = ET.SubElement(
             edges, "edge", id=edge_id, **{"from": frm, "to": to},
@@ -119,9 +141,10 @@ def write_edges(path=EDGES_FILE):
                 # else:
                 #     lane_attrs["disallow"] = "cav"  # 禁止CAV（非CAV道）
                 # 3.2 设置近段禁变道（保持原有逻辑）
-                if edge_id.endswith("_in"):
+                if edge_id.endswith("_in") or (edge_id in No_turn_edges_id):
                     lane_attrs["changeLeft"] = "emergency"
                     lane_attrs["changeRight"] = "emergency"
+                
 
                 ET.SubElement(e, "lane", **lane_attrs)
         else:
@@ -223,6 +246,7 @@ def build_net(nodes=NODES_FILE, edges=EDGES_FILE, out_net=NET_FILE, conns_path=C
     cmd = ["netconvert", "-n", nodes, "-e", edges]
     if conns_path:
         cmd += ["-x", conns_path]
+    cmd += ["--no-turnarounds"]
     cmd += ["-o", out_net]
     print("[RUN] " + " ".join(cmd))
     subprocess.run(cmd, check=True)

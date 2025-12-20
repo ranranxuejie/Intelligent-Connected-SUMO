@@ -1,17 +1,17 @@
 <?xml version="1.0" ?>
 <additional>
   <tlLogic id="center" type="static" programID="CAV" offset="0">
-    <phase duration="32" state="grrrgGGGrrgrrrgGGGGr" minDur="20" maxDur="60"/>
-    <phase duration="3" state="grrrgyyyrrgrrrgyyyyr"/>
-    <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
-    <phase duration="35" state="grrrgrrrGGgrrrgrrrrG" minDur="20" maxDur="60"/>
-    <phase duration="3" state="grrrgrrryygrrrgrrrry"/>
-    <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
-    <phase duration="35" state="gGGrgrrrrrgGGrgrrrrr" minDur="20" maxDur="60"/>
-    <phase duration="3" state="gyyrgrrrrrgyyrgrrrrr"/>
-    <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
-    <phase duration="35" state="grrGgrrrrrgrrGgrrrrr" minDur="20" maxDur="60"/>
-    <phase duration="3" state="grrygrrrrrgrrygrrrrr"/>
-    <phase duration="2" state="rrrrrrrrrrrrrrrrrrrr"/>
+    <phase duration="32" state="grrrgGGGrrgrrrgGGGr" minDur="20" maxDur="60"/>
+    <phase duration="3" state="grrrgyyyrrgrrrgyyyr"/>
+    <phase duration="2" state="rrrrrrrrrrrrrrrrrrr"/>
+    <phase duration="35" state="grrrgrrrGGgrrrgrrrG" minDur="20" maxDur="60"/>
+    <phase duration="3" state="grrrgrrryygrrrgrrry"/>
+    <phase duration="2" state="rrrrrrrrrrrrrrrrrrr"/>
+    <phase duration="35" state="gGGrgrrrrrgGGrgrrrr" minDur="20" maxDur="60"/>
+    <phase duration="3" state="gyyrgrrrrrgyyrgrrrr"/>
+    <phase duration="2" state="rrrrrrrrrrrrrrrrrrr"/>
+    <phase duration="35" state="grrGgrrrrrgrrGgrrrr" minDur="20" maxDur="60"/>
+    <phase duration="3" state="grrygrrrrrgrrygrrrr"/>
+    <phase duration="2" state="rrrrrrrrrrrrrrrrrrr"/>
   </tlLogic>
 </additional>

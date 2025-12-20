@@ -4,9 +4,9 @@
   <vType id="truck" vClass="truck" length="7.5" width="2.5" maxSpeed="40" accel="1.8" decel="3.5" sigma="0.6"/>
   <vType id="taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" color="1,0,0"/>
   <vTypeDistribution id="mix">
-    <vType id="mix_private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.7"/>
+    <vType id="mix_private" vClass="private" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.4"/>
     <vType id="mix_truck" vClass="truck" length="7.5" width="2.5" maxSpeed="40" accel="1.8" decel="3.5" sigma="0.6" probability="0.1"/>
-    <vType id="mix_taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.2"/>
+    <vType id="mix_taxi" vClass="taxi" length="4.5" width="1.8" maxSpeed="50" accel="2.6" decel="4.5" sigma="0.5" probability="0.5"/>
   </vTypeDistribution>
   <route id="r_east_straight" edges="east_in_far east_in west_out"/>
   <route id="r_east_left" edges="east_in_far east_in south_out"/>
