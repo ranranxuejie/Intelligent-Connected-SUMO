@@ -37,9 +37,9 @@
     "south_in_far": [3.1, 2, 1]
   },
   "vehicle_type_ratios": {
-    "private": 0.40,
+    "private": 0.56,
     "truck": 0.10,
-    "taxi": 0.50
+    "taxi": 0.34
   },
   "bus_lines": [
   ],

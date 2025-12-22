@@ -81,7 +81,7 @@ def generate_routes():
     ET.SubElement(root, "vType", id="truck", vClass="truck", length="7.5", width="2.5",
                   maxSpeed="40", accel="1.8", decel="3.5", sigma="0.6")
     ET.SubElement(root,"vType" , id ="taxi",vClass="taxi",length="4.5", width="1.8",
-                  maxSpeed="50", accel="2.6", decel="4.5", sigma="0.5",color="1,0,0")
+                  maxSpeed="50", accel="2", decel="3", sigma="0.5",color="1,0,0")
 
     vtd = ET.SubElement(root, "vTypeDistribution", id="mix")
     ET.SubElement(vtd, "vType", id="mix_private", vClass="private",
@@ -91,7 +91,7 @@ def generate_routes():
                   length="7.5", width="2.5", maxSpeed="40", accel="1.8", decel="3.5",
                   sigma="0.6", probability=str(vehicle_type_ratios["truck"]))
     ET.SubElement(vtd, "vType", id="mix_taxi", vClass="taxi",
-                  length="4.5", width="1.8", maxSpeed="50", accel="2.6", decel="4.5",
+                  length="4.5", width="1.8", maxSpeed="50", accel="2", decel="3",
                   sigma="0.5", probability=str(vehicle_type_ratios["taxi"]))
 
     # -------------------------- 定义固定路线（直/左/右） --------------------------

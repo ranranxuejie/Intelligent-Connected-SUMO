@@ -1,129 +1,275 @@
-# CAV 协同信号优先与编队控制仿真系统技术说明书
+# CAV Plus 程序逻辑解释
 
-## 1. 系统概述
-本系统基于 SUMO (Simulation of Urban MObility) 交通仿真平台构建，旨在模拟与评估**网联自动驾驶车辆 (Connected and Automated Vehicles, CAV)** 在城市信号控制交叉口场景下的协同控制效能。
+## 1. 概述
+CAV Plus 是一个智能交通仿真程序，用于模拟和测试**智能网联汽车（CAV）** 在交叉口的协同控制策略。它可以实现两种核心功能：
+- **信号优先**：让CAV车辆获得更长的绿灯时间或更快的红灯切换
+- **轨迹/编队控制**：让CAV车辆保持安全距离，形成紧密的车队行驶
 
-系统集成了两项核心协同技术：
-1.  **主动信号优先 (Active Signal Priority)**：基于 V2I (Vehicle-to-Infrastructure) 通信，实时优化信号配时方案（绿灯延长/相位截断），提升 CAV 车队通行效率。
-2.  **协同轨迹与编队控制 (Cooperative Trajectory & Platooning)**：基于 V2V (Vehicle-to-Vehicle) 通信，实现车辆在接近路口时的速度引导与紧密编队行驶，提升道路时空资源利用率。
+## 2. 运行方式
+程序通过命令行参数来控制不同功能的开启或关闭，使用方法如下：
 
-本系统支持通过命令行参数灵活配置实验场景，适用于不同控制策略组合及交通流量条件下的对比测试。
+| 参数 | 作用 | 默认值 |
+|------|------|--------|
+| --signal | 启用信号优先功能 | 关闭 |
+| --traj | 启用轨迹/编队控制 | 关闭 |
+| --scale | 调整交通流量大小 | 1.0（正常流量） |
+| --gui | 显示可视化界面 | 关闭 |
 
----
+**使用示例**：
+```
+python cav_plus.py --signal --traj --gui --scale 1.5
+```
+这个命令表示：启用信号优先和轨迹控制，显示可视化界面，交通流量为正常的1.5倍。
 
-## 2. 运行控制与参数配置
-系统通过接收外部参数控制仿真运行模式。
+## 3. 模拟设置
+程序启动时会自动完成以下准备工作：
 
-### 2.1 启动参数说明
-运行脚本时可指定以下参数，以构建不同的实验组/对照组：
+1. **选择运行模式**：根据是否使用GUI，选择对应的SUMO仿真引擎
+2. **配置输出文件**：创建一个专门的文件夹，用于保存仿真结果数据
+3. **设置仿真参数**：配置仿真步长、车辆长度等基础参数
+4. **初始化交通灯**：加载预设的交通信号灯配置
 
-| 参数标识 | 参数名称 | 功能定义 | 默认值 |
-| :--- | :--- | :--- | :--- |
-| `--signal` | **信号优先开关** | 启用后，信号控制机将响应 CAV 车队的通行请求，执行动态相位调整。 | False (关闭) |
-| `--traj` | **轨迹控制开关** | 启用后，CAV 将接管 SUMO 默认驾驶模型，执行平滑减速与 CACC 编队逻辑。 | False (关闭) |
-| `--scale` | **流量缩放系数** | 调整路网交通需求的生成强度。系数 $1.0$ 代表基准流量，$1.2$ 代表流量增加 20%。 | 0.1 |
+## 4. 核心参数
+程序中有一些重要的配置值，影响着仿真效果：
 
-### 2.2 实验方案设计
-本研究采用正交实验设计方法，针对 **信号优先控制**、**轨迹编队控制** 以及 **交通流量强度** 三个维度进行组合，共设计 **8 组** 对比实验场景，以全面评估不同控制策略在不同交通压力下的效能。
+| 参数 | 含义 | 设置值 |
+|------|------|--------|
+| 最大车速 | CAV车辆的最高行驶速度 | 16.67 m/s（约60 km/h） |
+| 绿灯最长延长时间 | 一次绿灯最多可以延长多久 | 15秒 |
+| 交通压力阈值 | 判断道路拥堵的标准（车辆数） | 15辆 |
+| 检测距离 | 检测车辆是否需要信号优先的范围 | 200米 |
+| 虚拟停止线 | 提前停车的参考位置 | 距离实际停止线30米 |
+| 安全距离 | 车辆之间的最小安全间距 | 2.0米 |
 
-具体实验分组如下表所示：
+## 5. 核心功能
 
-| 实验组编号 | 流量场景 (Scale) | 信号优先策略 (Signal) | 轨迹编队策略 (Traj) | 实验目的与预期 |
-| :---: | :---: | :---: | :---: | :--- |
-| **G1** | **1.0 (基准流)** | **关闭** | **关闭** | **基准对照组**：模拟现状常规交通流运行情况，作为评估优化的基础标尺。 |
-| **G2** | 1.0 (基准流) | **开启** | 关闭 | 评估在正常流量下，仅依靠信号机主动调节对通行效率的提升效果。 |
-| **G3** | 1.0 (基准流) | 关闭 | **开启** | 评估在正常流量下，仅依靠车辆自身编队与速度引导对通行效率的提升效果。 |
-| **G4** | 1.0 (基准流) | **开启** | **开启** | **综合优化组**：评估车路协同（信号+车辆）全功能开启下的系统最优性能。 |
-| **G5** | **1.2 (高负荷)** | **关闭** | **关闭** | **高压对照组**：模拟高峰期拥堵状态下的常规运行情况，用于观察系统崩溃点。 |
-| **G6** | 1.2 (高负荷) | **开启** | 关闭 | 测试信号优先策略在交通高压力状态下的抗压能力与调节极限。 |
-| **G7** | 1.2 (高负荷) | 关闭 | **开启** | 测试车辆编队技术在高密度交通流中提升道路时空资源利用率的能力。 |
-| **G8** | 1.2 (高负荷) | **开启** | **开启** | **高压综合组**：验证全功能协同控制在极端交通压力下缓解拥堵、维持系统稳定的能力。 |
+### 5.1 车速控制
+程序使用**五次多项式算法**来实现车辆的平滑加速和减速，避免急加速急刹车。这种算法能让车辆的运动更加自然，就像人类驾驶员一样平稳操作。
 
----
+#### 5.1.1 核心算法原理
+五次多项式是一种数学公式，可以描述一条平滑的曲线，用于规划车辆的速度变化。它的基本形式是：
 
-## 3. 控制策略逻辑详解
+```
+x(t) = c0 + c1×t + c2×t² + c3×t³ + c4×t⁴ + c5×t⁵
+```
 
-### 3.1 主动信号优先策略 (Signal Priority Strategy)
-系统根据 CAV 车队的实时状态与路口排队情况，动态调整信号相位。
+其中：
+- `x(t)` 表示车辆在时间t的位置
+- `c0`到`c5`是多项式系数，决定了曲线的形状
+- `t` 是时间
 
-[![](https://mermaid.ink/img/pako:eNqNlXtv0lAYxr8KOWYJSwppy70mmmVbookmJuMvh3_U9nQ0g5aUEpmEBBLd3FC2RZ3LmG46ZdNkoMbd3O3LcE7hW3hKV2DQ4CChh3Pe5znP--stBwRVhIADMxqfiruiEzEtprjIZ2TE5fF4XGi_ijfrrZ0y3j7D20fobBnVNhoni-aiXSok-HR6Akqup3wauiQ5keBuSZJEpXVNnYXcLZqmr8aeZ7KoxzkmlaUENaFq7bXbAz5pndd0qIhXXl39cC-y56CXCAU5LavKTXNpWY6mtDnyMywhL-g9nrT5HWLrDQw23McZHxSNvRKqXBinb_GnF714p0wabjc6K6Dd0ugox3EdPh7PHdd9Rdanm-UjtLxmVI4b528ax-XmebW1vmUsHeJC8QkRmCfGtrOPpq5tMB6HwuyjOCnJGZUa3l7AaydoZRWv143TS6NYv5snDjbGfhcS36pCr-bxu7o93fV0mc2t17s7RXk5MY13CvighH5ekKQksnFeI6kno2P9YTuKtt4cPFBnZCFHHNFKtbVZaFaL6PSw9f7SMWVHMJBiipcgk2tc7JJOUbmEliqotohe7jnadBW9PmOCPpnVp_HibvPza85KYbEwu7CuECdcf7_8BxfprBv0HuRFG9fXPx1cjqDM2rbSHFigLA0uf2terjaP6mh5x7HDjsARFJtD87-NH0XrwrgJKLYPVFTLKDYpCwD-8B2v7Q8nRW6Fj1v410KzuOF4Rm1Qk4rodlvV1-4P5_PXo3Js32H9el8OBda14DBrNm5PA4o8ZWURcBKfSEMKJKGW5M3_IGfWx4Aeh0kYAxwZilDiMwk9BtorSp5oU7zyWFWTgNO1DFFramYm3vHKpERehxMyT57jyc4skQAuB7KAY5iwNxRgff5IOMT4mXDQR4E5wLFswBuO-FlfiI2w4SAdDOQp8Ly9C-MN-iN-P0P7faEQGw4FyZaEKdTG1YyiEynNshSAoqyr2kPrHdJ-leT_ASYQblM?type=png)](https://mermaid-live.nodejs.cn/edit#pako:eNqNlXtv0lAYxr8KOWYJSwppy70mmmVbookmJuMvh3_U9nQ0g5aUEpmEBBLd3FC2RZ3LmG46ZdNkoMbd3O3LcE7hW3hKV2DQ4CChh3Pe5znP--stBwRVhIADMxqfiruiEzEtprjIZ2TE5fF4XGi_ijfrrZ0y3j7D20fobBnVNhoni-aiXSok-HR6Akqup3wauiQ5keBuSZJEpXVNnYXcLZqmr8aeZ7KoxzkmlaUENaFq7bXbAz5pndd0qIhXXl39cC-y56CXCAU5LavKTXNpWY6mtDnyMywhL-g9nrT5HWLrDQw23McZHxSNvRKqXBinb_GnF714p0wabjc6K6Dd0ugox3EdPh7PHdd9Rdanm-UjtLxmVI4b528ax-XmebW1vmUsHeJC8QkRmCfGtrOPpq5tMB6HwuyjOCnJGZUa3l7AaydoZRWv143TS6NYv5snDjbGfhcS36pCr-bxu7o93fV0mc2t17s7RXk5MY13CvighH5ekKQksnFeI6kno2P9YTuKtt4cPFBnZCFHHNFKtbVZaFaL6PSw9f7SMWVHMJBiipcgk2tc7JJOUbmEliqotohe7jnadBW9PmOCPpnVp_HibvPza85KYbEwu7CuECdcf7_8BxfprBv0HuRFG9fXPx1cjqDM2rbSHFigLA0uf2terjaP6mh5x7HDjsARFJtD87-NH0XrwrgJKLYPVFTLKDYpCwD-8B2v7Q8nRW6Fj1v410KzuOF4Rm1Qk4rodlvV1-4P5_PXo3Js32H9el8OBda14DBrNm5PA4o8ZWURcBKfSEMKJKGW5M3_IGfWx4Aeh0kYAxwZilDiMwk9BtorSp5oU7zyWFWTgNO1DFFramYm3vHKpERehxMyT57jyc4skQAuB7KAY5iwNxRgff5IOMT4mXDQR4E5wLFswBuO-FlfiI2w4SAdDOQp8Ly9C-MN-iN-P0P7faEQGw4FyZaEKdTG1YyiEynNshSAoqyr2kPrHdJ-leT_ASYQblM)
+通过调整这些系数，可以实现从当前状态到目标状态的平滑过渡。
 
-#### 3.1.1 绿灯延长 (Green Extension)
-旨在防止正在通过路口的车队被红灯截断。
-*   **触发逻辑**：
-    1.  目标相位（东西直行）当前为**绿灯**。
-    2.  检测到 CAV 车队**尾车 (Tail Vehicle)** 位于进口道，且其预计到达停止线时间 (ETA) 大于当前剩余绿灯时间。
-    3.  **冲突约束检测**：侧向冲突相位（南北向及左转相位）的**车道占有率**低于阈值 `PRESSURE_THRESHOLD`，确保不造成严重的支路拥堵。
-*   **控制动作**：
-    延长当前相位绿灯时长，延长时间量 $T_{ext} = ETA_{tail} - T_{remaining}$，但受最大延长时间限制。
+#### 5.1.2 停车模式
+当车辆需要停下来时（如遇到红灯），程序会执行以下步骤：
 
-#### 3.1.2 相位截断/红灯早断 (Phase Truncation / Early Green)
-旨在缩短 CAV 车队在红灯前的无效等待时间。
-*   **触发逻辑**：
-    1.  目标相位当前为**红灯**（即冲突相位正在放行）。
-    2.  CAV **头车 (Head Vehicle)** 距离路口小于检测距离 `DETECTION_DIST`。
-    3.  **安全约束检测**：当前正在放行的相位（如南北直行）交通需求极低，其检测区域内的车辆数低于安全阈值 `EARLY_GREEN_PRESSURE`。
-    4.  当前相位已满足最小绿灯运行时间 `MIN_NS_LEFT_TIME`。
-*   **控制动作**：
-    立即终止当前放行相位，切换至黄灯过渡，随后开启目标相位绿灯。
+1. **计算刹车距离**：确定从当前位置到停止线的精确距离
+2. **估算刹车时间**：
+   - 如果当前速度较高，使用公式：`T0 = 2S / v0`（S是距离，v0是当前速度）
+   - 如果当前速度很低，使用公式：`T0 = 2×√(S)`（更温和的刹车）
+3. **调整刹车曲线**：根据设定的"刹车形状因子"调整刹车的平滑程度
+   - 形状因子 > 1：刹车更平缓，时间更长
+   - 形状因子 < 1：刹车更急，时间更短
+4. **计算五次多项式系数**：通过解方程组，得到使车辆刚好停在停止线的多项式系数
+5. **计算下一刻速度**：根据多项式计算出下一时刻的目标速度
 
-### 3.2 协同轨迹控制策略 (Cooperative Trajectory Control)
-系统对 CAV 车辆施加分层控制，根据车辆在车队中的位置及其与路口的状态关系，执行差异化速度引导。
+**停车模式关键参数**：
+- 静止速度阈值：0.1 m/s（低于这个速度就算停车）
+- 停车距离死区：0.5 m（接近停止线时直接停车）
+- 刹车形状因子：1.5（默认值，提供平滑刹车体验）
 
-[![](https://mermaid.ink/img/pako:eNqNVWtP2lAY_ivkGBNNCmu52y1bHC77smWJ7tNkHzp6kEagpC2ZjpBAsiGKDt0WY5w31CBboiS7iArqn_H08i92TrUFJrhBQg7v5Xmf5zmnpxkQEXkIWDAlcamY4-VYWAonHfgzOOhwOp0OdFhVN-rG3kd1p6XuNFCrjI7Wr07nSdIqjcQ5WR6DUccbToaOqBCPswPRaJSSFUmchuwATdM3a-dbgVdiLJOaoSJiXJTM3P1bOLLCSQpM8jdY7f67sfDM21g8jAiyICb_l5c0w9KUNIt_7mLIRZQOTJp874B1-W4L_stn9Xdeq5XQ1wut-Vndet9p7wRxY2gItXLooDQ8zLKs7Y_T-dARisHI9LgYhxlU3FdXD_Xzqn5R0A8-6fM_srjYMsCC6xhs7Bb04nfcgIoF9UvdytiIGL9d0x42IUxl0PySunp6dVlB5Ya2cKzm8o96DbPqCZLWvNTydRNmNKKEpLQgw0m1VsFnikUfakZuGzUqeNZrjHPtb0-Us10LxQyPCbKS0RubWrWJ8hvq4a52dvmA8dGJ_nxIC4FS12w2T-MCb5NRS9sYCp3-VJsraK6MifWhZAGh5Wq3rB5e641tY718t9d2TVveM8jxxGwc_JfNpNRkY1K-hyVYSJjXY4mbbru9VEbLi6h4jBZqfaRZYOrhHjo50SuLxrdjW-NoKGRBkbX26wDVC1pr1Vjr4VSHB-Rsb24buaZ-sWKFbc_aml-klQzeG-wq2dRWTm_UUXmvp3Br67qaO5Km7H5Jwr1nrssJHO88LONQhsqkMbeknR9dnZwZzTX9aJ-YsVUi2s0rkNQ9SfJDQ9eCu57ZXtjW-cE9gMI3scADNsrFZUiBBJQSHPkPMqQvDJQYTMAwYPGSh1EuHVfCwMwks7g3xSVfiWICsIqUxt2SmJ6K2VjpFM8pcEzg8F2fsKO4BbAZMANYxu920V6P1xN0MyNuxhdwU2AWsE5PIODyBf0e30jA7_GOBL1ZCrwzpzAuDxNk6ICX8TBuP1nhmVgklEJiOqkA1k0HfRSAvKCI0vPrF435vsn-Acz2hdw?type=png)](https://mermaid-live.nodejs.cn/edit#pako:eNqNVWtP2lAY_ivkGBNNCmu52y1bHC77smWJ7tNkHzp6kEagpC2ZjpBAsiGKDt0WY5w31CBboiS7iArqn_H08i92TrUFJrhBQg7v5Xmf5zmnpxkQEXkIWDAlcamY4-VYWAonHfgzOOhwOp0OdFhVN-rG3kd1p6XuNFCrjI7Wr07nSdIqjcQ5WR6DUccbToaOqBCPswPRaJSSFUmchuwATdM3a-dbgVdiLJOaoSJiXJTM3P1bOLLCSQpM8jdY7f67sfDM21g8jAiyICb_l5c0w9KUNIt_7mLIRZQOTJp874B1-W4L_stn9Xdeq5XQ1wut-Vndet9p7wRxY2gItXLooDQ8zLKs7Y_T-dARisHI9LgYhxlU3FdXD_Xzqn5R0A8-6fM_srjYMsCC6xhs7Bb04nfcgIoF9UvdytiIGL9d0x42IUxl0PySunp6dVlB5Ya2cKzm8o96DbPqCZLWvNTydRNmNKKEpLQgw0m1VsFnikUfakZuGzUqeNZrjHPtb0-Us10LxQyPCbKS0RubWrWJ8hvq4a52dvmA8dGJ_nxIC4FS12w2T-MCb5NRS9sYCp3-VJsraK6MifWhZAGh5Wq3rB5e641tY718t9d2TVveM8jxxGwc_JfNpNRkY1K-hyVYSJjXY4mbbru9VEbLi6h4jBZqfaRZYOrhHjo50SuLxrdjW-NoKGRBkbX26wDVC1pr1Vjr4VSHB-Rsb24buaZ-sWKFbc_aml-klQzeG-wq2dRWTm_UUXmvp3Br67qaO5Km7H5Jwr1nrssJHO88LONQhsqkMbeknR9dnZwZzTX9aJ-YsVUi2s0rkNQ9SfJDQ9eCu57ZXtjW-cE9gMI3scADNsrFZUiBBJQSHPkPMqQvDJQYTMAwYPGSh1EuHVfCwMwks7g3xSVfiWICsIqUxt2SmJ6K2VjpFM8pcEzg8F2fsKO4BbAZMANYxu920V6P1xN0MyNuxhdwU2AWsE5PIODyBf0e30jA7_GOBL1ZCrwzpzAuDxNk6ICX8TBuP1nhmVgklEJiOqkA1k0HfRSAvKCI0vPrF435vsn-Acz2hdw)
+#### 5.1.3 跟车/巡航模式
+当车辆正常行驶时，程序会根据前车情况调整速度：
 
-#### 3.2.1 领航车/自由流车辆控制 (Leader Control)
-针对车队头车或独立行驶车辆：
-*   **绿灯通行模式**：当信号为绿灯时，车辆按道路限速 `MAX_SPEED` 巡航，追求最大通行效率。
-*   **拟停平滑减速模式 (Glide-to-Stop)**：
-    *   **触发条件**：前方信号为红灯，且车辆距离停止线小于制动视距 `BRAKING_HORIZON`。
-    *   **计算逻辑**：摒弃急停急起，计算恒定舒适减速度，使车辆到达停止线时速度恰好衰减为 0。
-    *   **速度公式**：目标速度 $v_{target} = \sqrt{2 \cdot a_{comf} \cdot d_{stop}}$
-        *   $a_{comf}$：预设舒适减速度 (Comfort Deceleration)。
-        *   $d_{stop}$：当前位置距离停止线（减去安全余量）的距离。
+1. **判断前车状态**：
+   - 如果与前车速度差小于0.5 m/s，直接跟随前车速度
+   - 如果前车停止且自身也停止，保持静止（防溜车逻辑）
+2. **计算期望间距**：
+   ```
+   期望间距 = 静止安全距离 + 当前速度 × 时距
+   ```
+   - 静止安全距离：2.0 m（车辆停止时的最小间距）
+   - 时距：0.5 s（保持当前速度下0.5秒的行驶距离）
+3. **计算跟车速度**：
+   ```
+   跟车速度 = 前车速度 + 间距误差 × 跟车增益
+   ```
+   - 间距误差：当前间距与期望间距的差值
+   - 跟车增益：0.1（控制跟车响应的灵敏度）
+4. **应用安全限制**：
+   - 舒适刹车限制：确保刹车时的减速度不超过1.5 m/s²
+   - 紧急刹车限制：确保在紧急情况下能安全停下，减速度不超过5.0 m/s²
+5. **使用五次多项式平滑过渡**：计算从当前速度到目标速度的平滑加速/减速曲线
 
-#### 3.2.2 跟随车编队控制 (Follower / Platooning Control)
-针对车队中的后随车辆：
-*   **CACC 紧密编队模式**：
-    *   **触发条件**：前车处于正常行驶状态。
-    *   **控制逻辑**：激活协同自适应巡航控制 (CACC)。通过 V2V 通信获取前车状态，大幅压缩跟驰间距。
-    *   **参数特征**：车间距维持在 `PLATOON_MINGAP` (如 1.0m)，车头时距维持在 `PLATOON_TAU` (如 0.5s)，显著提升道路容量。
-*   **协同制动模式**：
-    *   **触发条件**：前车进入“拟停平滑减速模式”或正在制动。
-    *   **控制逻辑**：后车同步执行平滑减速逻辑，保持与前车一致的制动节奏，避免追尾并抑制交通激波的产生。
+**跟车模式关键参数**：
+- 跟车增益：0.1（数值越大，对间距变化的响应越敏感）
+- 舒适减速度：1.5 m/s²（正常刹车的最大减速度）
+- 紧急减速度：5.0 m/s²（紧急情况下的最大减速度）
 
----
+#### 5.1.4 算法优势
+- **平滑性**：五次多项式确保速度和加速度的变化都是连续的，没有突变
+- **安全性**：内置了多种安全限制，防止碰撞和急刹
+- **适应性**：根据不同情况自动调整控制策略
+- **舒适性**：模拟人类驾驶员的驾驶习惯，提供平稳的乘坐体验
 
-## 4. 关键技术参数定义
-以下参数位于代码配置区，用户可根据道路几何条件和交通特性进行校准。
+这种车速控制算法能让CAV车辆在各种情况下都能安全、平滑地行驶，提高交通效率的同时保证乘客舒适。
 
-### 4.1 信号控制参数
-| 参数变量名 | 推荐值 | 物理含义及设置原则 |
-| :--- | :--- | :--- |
-| `MAX_EXTENSION` | `15.0` (s) | **最大绿灯延长时间**。限制单次绿灯延长的上限，防止单一方向长时间占用路权导致周期紊乱。 |
-| `PRESSURE_THRESHOLD` | `15` (%) | **侧向压力阈值（占有率）**。表示冲突相位进口道的空间占有率。若冲突车道占有率超过此值（说明排队较长），系统将拒绝执行绿灯延长，优先保障路网公平性。 |
-| `EARLY_GREEN_PRESSURE` | `1` (辆) | **红灯早断安全阈值**。仅当当前放行相位的检测区域内车辆数少于此值时，才允许截断相位。必须设置为极低值以确保清空冲突车流，保障安全。 |
-| `DETECTION_DIST` | `120.0` (m) | **CAV 感知距离**。定义 CAV 向信号机发送请求的通信范围。数值通常取决于 DSRC/C-V2X 通信模组的有效覆盖范围。 |
+### 5.2 交通压力检测
+程序通过**全面压力检测**算法来判断道路拥堵情况，这是实现智能交通控制的基础。
 
-### 4.2 车辆运动学参数
-| 参数变量名 | 推荐值 | 物理含义及设置原则 |
-| :--- | :--- | :--- |
-| `MAX_SPEED` | `16.67` (m/s) | **道路限速**。对应约 60km/h。应与仿真路网的道路等级保持一致。 |
-| `PLATOON_MINGAP` | `1.0` (m) | **编队静止间距**。CACC 模式下车辆停止时的最小物理间距。数值越小，路口空间利用率越高，但对控制精度要求越高。 |
-| `PLATOON_TAU` | `0.5` (s) | **编队车头时距**。表示后车通过前车位置所需的时间差。普通驾驶员通常为 1.5s~2.0s，自动驾驶可压缩至 0.6s 以下，显著提升通行能力。 |
-| `COMFORT_DECEL` | `1.0` (m/s²) | **舒适减速度**。用于计算平滑减速轨迹。数值越小，减速过程越平缓，乘客舒适度越高，能耗越低。 |
+#### 5.2.1 检测原理
+传统的交通检测方法只统计停止的车辆，容易遗漏已经起步但仍在路口附近的车辆。本程序采用更全面的检测方式：
 
----
+1. **遍历指定车道**：检查所有需要监测的车道
+2. **获取车辆信息**：获取每个车道上的所有车辆
+3. **计算距离**：精确计算每个车辆到停止线的距离
+4. **判断压力**：只要车辆在检测范围内，就算作有效交通压力
+5. **返回结果**：返回总车辆数作为该方向的交通压力值
 
-## 5. 数据输出与分析
-仿真结束后，系统将在 `output/plus/` 目录下生成结构化的数据文件，文件命名格式为 `{Signal}_{Traj}_{Scale}`（例如 `True_True_1.0`），包含以下关键指标文件：
+#### 5.2.2 检测范围
+检测范围是一个关键参数，可以根据需要灵活调整：
+- **绿灯延长**：使用80米检测范围（检测侧向道路压力）
+- **红灯早断**：使用150米检测范围（确保当前方向没有车辆）
+- **默认设置**：200米（常规检测）
 
-1.  **`tripinfo.xml` (行程信息表)**：
-    *   记录每辆车的出发时间、到达时间、总耗时 (Duration)、停车等待时间 (Waiting Time) 及能耗数据。
-    *   *用途：用于计算平均延误、平均车速等微观评价指标。*
-2.  **`statistic.xml` (全局统计表)**：
-    *   包含仿真期间的总车辆数、路网平均拥堵指数、总行驶里程等。
-    *   *用途：用于评估路网层面的宏观运行状态。*
-3.  **`queue.xml` (排队数据表)**：
-    *   记录各进口道在每个时间步的排队长度。
-    *   *用途：分析交叉口排队消散规律及溢出风险。*
+#### 5.2.3 算法优势
+- **全面性**：不会遗漏任何在范围内的车辆，无论是否移动
+- **灵活性**：可以根据不同场景调整检测范围
+- **鲁棒性**：内置错误处理，防止车道ID错误导致程序崩溃
+- **实时性**：每0.1秒更新一次压力数据，确保决策及时
+
+### 5.3 协同控制逻辑
+协同控制是CAV Plus的核心功能，包括**信号优化**和**轨迹控制**两大部分，让CAV车辆能够更高效、安全地通行。
+
+#### 5.3.1 信号优化
+程序会根据CAV车辆的位置和道路拥堵情况，动态调整交通信号灯，让CAV车辆获得更好的通行条件。
+
+##### 绿灯延长
+当CAV车队正在通过路口，而绿灯即将结束时，程序会考虑延长绿灯时间：
+
+1. **识别关键车辆**：找到车队中最后一辆车（尾车）
+2. **计算到达时间**：
+   ```
+   到达时间 = 尾车到停止线的距离 / 尾车速度
+   ```
+3. **判断是否需要延长**：如果到达时间大于绿灯剩余时间，考虑延长
+4. **检测侧向压力**：检查侧向道路（南北方向）的交通压力
+5. **执行延长**：如果侧向压力小于阈值，延长绿灯时间
+
+**触发条件**：
+- 尾车距离停止线较远
+- 到达时间大于绿灯剩余时间
+- 侧向道路压力小于15辆
+- 距离上次延长超过3秒
+
+##### 红灯早断
+当当前绿灯方向车辆较少，而CAV车辆在等待红灯时，程序会考虑提前结束当前绿灯：
+
+1. **识别等待车辆**：找到等待红灯的CAV车队头车
+2. **检查当前相位**：判断当前绿灯方向是否可以提前结束
+3. **检测当前方向压力**：确保当前绿灯方向150米内没有车辆
+4. **执行早断**：如果条件满足，提前跳转到黄灯
+
+**触发条件**：
+- 当前绿灯方向压力小于3辆
+- 绿灯已经运行超过5秒
+- CAV头车在200米检测范围内
+- 距离上次信号调整超过5秒
+
+#### 5.3.2 轨迹控制
+轨迹控制让CAV车辆形成紧密的车队行驶，提高道路利用率，同时保证安全。
+
+##### 车辆分组
+程序会将同一路径上的CAV车辆分为一组，便于统一控制：
+1. **定义路径**：预设CAV车辆的行驶路径（如东西直行）
+2. **筛选车辆**：只处理符合条件的CAV车辆
+3. **排序车辆**：按距离停止线的远近排序，形成车队
+
+##### 头车控制
+每队CAV车辆的第一辆车（头车）拥有特殊的控制逻辑：
+
+1. **判断交通灯状态**：
+   - 如果是绿灯，加速通过路口
+   - 如果是红灯，提前减速停车
+2. **计算停车距离**：使用五次多项式算法规划平滑的停车轨迹
+3. **动态调整**：根据绿灯剩余时间调整行驶策略
+
+##### 跟随车控制
+跟随车会模仿头车的行为，保持安全距离：
+
+1. **判断前车状态**：
+   - 如果前车已经进入路口，而当前是红灯，自动变为临时头车
+   - 否则，执行跟随逻辑
+2. **计算安全距离**：
+   ```
+   安全距离 = 车辆长度 + 编队最小间距 + 停止缓冲区
+   ```
+3. **执行跟随**：使用五次多项式算法平滑跟随前车
+4. **颜色标识**：不同状态的车辆显示不同颜色，便于观察
+
+##### 全局清理
+程序会定期释放不再受控的车辆，恢复其正常行驶状态：
+- 将车辆颜色恢复为黄色
+- 取消速度控制，恢复自主行驶
+- 重置车辆参数
+
+#### 5.3.3 协同控制优势
+- **提高通行效率**：减少CAV车辆的等待时间
+- **减少能源消耗**：避免急加速急刹车
+- **提高道路利用率**：车辆编队行驶，减少车距
+- **增强安全性**：实时监测，提前预警
+- **自适应调整**：根据交通情况动态优化
+
+通过这些协同控制策略，CAV Plus程序能够实现智能网联汽车的高效、安全通行，为未来智能交通系统提供参考。
+
+## 6. 主仿真流程
+
+1. **初始化**：启动SUMO仿真，加载路网和车辆数据
+2. **设置视图**：如果启用GUI，调整视角和显示模式
+3. **循环仿真**：
+   - 执行一个仿真步长（0.1秒）
+   - 如果启用了协同逻辑，执行信号优化和轨迹控制
+   - 保存仿真数据
+   - 重复直到所有车辆离开路网
+4. **结束仿真**：关闭SUMO连接，保存最终结果
+
+## 7. 总结
+
+CAV Plus 程序是一个智能交通仿真工具，通过以下方式提高交通效率：
+
+- **信号优先**：让CAV车辆获得更好的通行条件，减少等待时间
+- **轨迹控制**：让CAV车辆形成紧密编队，提高道路利用率
+- **平滑控制**：减少急加速急刹车，降低能耗和排放
+- **动态调整**：根据实时交通情况优化信号控制
+
+这个程序可以用于测试和评估CAV协同控制策略，为未来智能交通系统的设计提供参考。
+
+## 8. 可视化颜色说明
+
+在GUI模式下，车辆会显示不同颜色，代表不同的状态：
+
+| 颜色 | 状态 |
+|------|------|
+| 绿色 | 正常行驶 |
+| 橙色 | 正在减速停车或等待 |
+| 青色 | 正在协同加速 |
+| 黄色 | 不受控的车辆 |
+
+通过这些颜色，可以直观地观察到CAV车辆的协同行为和信号优化效果。
+
+## 9. 结果分析参数 (Result Analysis Parameters)
+CAV Plus会生成详细的仿真结果数据，用于评估协同控制策略的效果。以下是主要分析参数的解释和计算公式：
+
+| 参数 | 英文名称 | 解释 | 计算公式 |
+|------|----------|------|----------|
+| 平均延误时间 | Average Delay Time | 车辆实际旅行时间与自由流旅行时间的差值 | `平均延误时间 = (总实际旅行时间 - 总自由流旅行时间) / 总车辆数` |
+| 平均停车次数 | Average Stopping Number | 每辆车在仿真过程中的平均停车次数 | `平均停车次数 = 总停车次数 / 总车辆数` |
+| 平均旅行时间 | Average Travel Time | 车辆从起点到终点的平均行驶时间 | `平均旅行时间 = 总旅行时间 / 总车辆数` |
+| 最大队列长度 | Maximum Queue Length | 仿真过程中出现的最大排队车辆数 | `最大队列长度 = max(各时间步的队列长度)` |
+| 通行能力 | Capacity | 单位时间内通过路口的最大车辆数 | `通行能力 = 总通过车辆数 / 仿真时间` |
+| 燃油消耗 | Fuel Consumption | 所有车辆的总燃油消耗 | 由SUMO仿真引擎直接计算，基于车辆类型和运行状态 |
+
+**自由流旅行时间 (Free Flow Travel Time)**：车辆在理想条件下（无拥堵、无信号控制）的旅行时间
+**自由流速度 (Free Flow Speed)**：道路设计的最高允许速度（本例中为16.67 m/s）
+
+这些参数可以帮助我们评估CAV协同控制策略的效果，比较不同控制模式下的交通效率提升。
