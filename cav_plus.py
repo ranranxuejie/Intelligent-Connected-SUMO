@@ -17,10 +17,17 @@ TRAFFIC_SCALE = None
 
 def parse_args():
     parser = argparse.ArgumentParser(description="CAV协同仿真：通过命令行开关控制信号优先与轨迹编队")
-    parser.add_argument("--signal", action="store_true", help="启用信号优先 (Signal Priority)",default=False)
-    parser.add_argument("--traj", action="store_true", help="启用轨迹/编队控制 (Trajectory/Platooning Control)",default=False)
+    # 核心逻辑：默认启用（True），输入 --no-signal 则禁用（False）
+    parser.add_argument("--no-signal", action="store_false", dest="signal", 
+                        help="禁用信号优先（默认启用）", default=True)
+    # 同理：--no-traj 禁用轨迹编队（默认启用）
+    parser.add_argument("--no-traj", action="store_false", dest="traj", 
+                        help="禁用轨迹/编队控制（默认启用）", default=True)
+    # 同理：--no-gui 禁用GUI（默认启用）
+    parser.add_argument("--no-gui", action="store_false", dest="gui", 
+                        help="禁用GUI可视化（默认启用）", default=True)
+    
     parser.add_argument("--scale", type=float, help="交通流量缩放比例", default=1.0)
-    parser.add_argument("--gui", action="store_true", help="启用 GUI 可视化", default=False)
     args = parser.parse_args()
     return args.signal, args.traj, args.scale, args.gui
 

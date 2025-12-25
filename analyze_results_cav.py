@@ -148,7 +148,7 @@ def add_traffic_light_info(ax, tl_config, approach, x_range, y_pos=0):
 
 def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
     # ================= 配置区域 =================
-    FCD_FILE = f"output/{test_name}/fcd.xml"
+    FCD_FILE = f"output/plus/{test_name}/fcd.xml"
     TL_FILE = "test/traffic_light.add.xml"  # 交通信号灯配置文件路径
     TARGET_VTYPE = "taxi"
 
@@ -315,21 +315,11 @@ def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
         cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
         fig.colorbar(sc_mappable, cax=cbar_ax, label='速度 (m/s)')
 
-    # 根据test_name确定是Normal还是CAV First模式，并提取速度值
-    if test_name == 'normal':
-        mode_title = 'Normal'
-        vmin_text = ''
-    else:
-        mode_title = 'CAV First'
-        # 从文件夹名称中提取速度值，例如 cav_first_4.17 -> 4.17 m/s
-        try:
-            vmin_value = float(test_name.split('_')[-1])
-            vmin_text = f' (Vmin={vmin_value:.2f} m/s)'
-        except:
-            vmin_text = ''
+    signal,traj,scale = test_name.split('_')
 
+    mode_title = f'signal={signal}, traj={traj}, scale={scale}'
     # 添加大标题显示模式和速度信息
-    fig.suptitle(f'{mode_title}{vmin_text}', fontsize=20, fontweight='bold')
+    fig.suptitle(f'{mode_title}', fontsize=20, fontweight='bold')
 
     save_path = f'results/{test_name}_{in_dir}.png'
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -337,10 +327,6 @@ def plot_aligned_trajectory(test_name='20251122_20_cav_first', in_dir='east'):
     plt.show()
 
 
-for MIN_SPEED in [0, 15 / 3.6, 20 / 3.6, 25 / 3.6, 30 / 3.6]:
-    if MIN_SPEED == 0:
-        out_folder = 'normal'
-    else:
-        out_folder = f'cav_first_{MIN_SPEED:.2f}'
+for out_folder in os.listdir('output/plus'):
     plot_aligned_trajectory(f'{out_folder}', 'east')
     plot_aligned_trajectory(f'{out_folder}', 'west')

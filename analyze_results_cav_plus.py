@@ -300,15 +300,30 @@ if __name__ == "__main__":
         analyzer.run(output_json_path=f'{FOLDER_NAME}/analysis_result.json')
 
 all_data = {}
+queue_data = {}
 for FOLDER_NAME in os.listdir("output/plus"):
     analysis_result = f'output/plus/{FOLDER_NAME}/analysis_result.json'
     with open(analysis_result, 'r', encoding='utf-8') as f:
         data = json.load(f)
+    # 收集Metrics数据
     flatten_data = data['Metrics']
     all_data[FOLDER_NAME] = flatten_data
+    # 收集排队数据
+    queue_data[FOLDER_NAME] = {
+        'max_queue_hv': data['Global']['max_queue_hv'],
+        'max_queue_cav': data['Global']['max_queue_cav']
+    }
 import pandas as pd
+
+# 导出Metrics数据
 all_data = pd.DataFrame(all_data)
 os.makedirs('./results/plus', exist_ok=True)
 for indicator in flatten_data['HV'].keys():
     indicator_result = all_data.map(lambda x: x[indicator])
     indicator_result.to_csv(f'./results/plus/{indicator}.csv', index=False)
+
+# 导出排队数据
+# 将queue_data转换为DataFrame
+queue_df = pd.DataFrame(queue_data).T  # 转置，使得配置作为行，排队指标作为列
+# 导出为单个CSV文件
+queue_df.to_csv('./results/plus/queue_lengths.csv', index=True)  # 保留配置名称作为索引
